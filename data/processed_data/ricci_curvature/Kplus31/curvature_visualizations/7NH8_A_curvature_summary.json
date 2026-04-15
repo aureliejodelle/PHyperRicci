@@ -1,0 +1,23 @@
+{
+  "protein": "7NH8_A",
+  "n_residues": 158,
+  "mean_curvature": -41.17088607594937,
+  "std_curvature": 64.52996488120306,
+  "min_curvature": -500.0,
+  "max_curvature": 0.0,
+  "median_curvature": -24.0,
+  "negative_percentage": 99.36708860759494,
+  "positive_percentage": 0.0,
+  "most_negative_residues": [
+    {
+      "residue": 154,
+      "curvature": -500.0
+    }
+  ],
+  "most_positive_residues": [
+    {
+      "residue": 114,
+      "curvature": 0.0
+    }
+  ]
+}

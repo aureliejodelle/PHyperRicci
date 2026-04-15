@@ -48,8 +48,8 @@ from typing import Dict
 # All paths derived from here so the config is portable across machines.
 _HERE = Path(__file__).resolve().parent
 
-# Two levels up from pipeline/ -> phd/Database/
-_DB = _HERE / "../../Database"
+# One level up from pipeline/ -> repo root, then into data/
+_DB = _HERE / "../data"
 
 
 @dataclass

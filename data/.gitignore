@@ -1,0 +1,3 @@
+# Persistent homology output is too large for GitHub (~1.4 GB).
+# Regenerate with: julia pipeline/step4_persistent_homology.jl --class <CLASS>
+processed_data/Persistent_homology/

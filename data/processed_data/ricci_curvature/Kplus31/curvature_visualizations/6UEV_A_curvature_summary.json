@@ -1,0 +1,27 @@
+{
+  "protein": "6UEV_A",
+  "n_residues": 130,
+  "mean_curvature": -27.23076923076923,
+  "std_curvature": 51.95745870222003,
+  "min_curvature": -371.0,
+  "max_curvature": 2.0,
+  "median_curvature": -14.0,
+  "negative_percentage": 98.46153846153847,
+  "positive_percentage": 1.5384615384615385,
+  "most_negative_residues": [
+    {
+      "residue": 129,
+      "curvature": -371.0
+    }
+  ],
+  "most_positive_residues": [
+    {
+      "residue": 26,
+      "curvature": 2.0
+    },
+    {
+      "residue": 91,
+      "curvature": 2.0
+    }
+  ]
+}
