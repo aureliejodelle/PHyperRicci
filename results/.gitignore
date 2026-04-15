@@ -1,0 +1,8 @@
+# Ignore generated binary outputs — regenerate with visualization/ scripts
+*.pdf
+*.png
+*.svg
+
+# Keep all CSV files and logs
+!*.csv
+!*.log
