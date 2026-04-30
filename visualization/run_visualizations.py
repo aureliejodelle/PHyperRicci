@@ -473,7 +473,7 @@ def main():
         help="Show pipeline status and exit.",
     )
 
-    # ── flags forwarded to child scripts ──────────────────────
+    # flags forwarded to child scripts 
     parser.add_argument(
         "--plots", nargs="+",
         metavar="PLOT",
