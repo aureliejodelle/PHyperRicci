@@ -38,6 +38,7 @@ from __future__ import annotations
 import sys
 import argparse
 import warnings
+import textwrap
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -50,27 +51,38 @@ from scipy.stats import gaussian_kde
 from statsmodels.stats.multitest import multipletests
 
 warnings.filterwarnings("ignore")
-sys.path.append(str(Path(__file__).resolve().parent.parent / "pipeline"))
+sys.path.append(str(Path(__file__).parent))
 from config import config
 
 import matplotlib as mpl
 mpl.rcParams.update({
-    "font.family":       "sans-serif",
-    "font.sans-serif":   ["Helvetica", "Arial", "DejaVu Sans"],
-    "axes.spines.top":   False,
-    "axes.spines.right": False,
-    "axes.grid":         True,
-    "axes.grid.axis":    "y",
-    "grid.alpha":        0.18,
-    "grid.linewidth":    0.5,
-    "axes.linewidth":    0.8,
-    "pdf.fonttype":      42,
-    "ps.fonttype":       42,
+    "font.family":        "serif",
+    "font.serif":         ["cmr10", "Computer Modern Roman", "DejaVu Serif"],
+    "mathtext.fontset":   "cm",
+    "axes.formatter.use_mathtext": True,
+    "font.size":          11,
+    "axes.titlesize":     11,
+    "axes.labelsize":     11,
+    "xtick.labelsize":    11,
+    "ytick.labelsize":    11,
+    "legend.fontsize":    10,
+    "axes.spines.top":    False,
+    "axes.spines.right":  False,
+    "axes.grid":          True,
+    "axes.grid.axis":     "y",
+    "grid.alpha":         0.18,
+    "grid.linewidth":     0.5,
+    "axes.linewidth":     0.8,
+    "pdf.fonttype":       42,
+    "ps.fonttype":        42,
 })
 
-# ─────────────────────────────────────────────────────────────
+# Single font-size constants — change here, takes effect everywhere
+FS       = 11   # axis labels, tick labels
+FS_TITLE = 11   # plot titles
+FS_LEG   = 10   # legends
+
 # CONFIG & CONSTANTS
-# ─────────────────────────────────────────────────────────────
 FEATURES_CSV = None
 COMPARE_ROOT = None
 DPI          = 200
@@ -142,6 +154,10 @@ def short_label(class_name: str, orig: str) -> str:
     if class_name == orig:
         return orig
     suffix = class_name[len(orig):].lstrip("_")
+    if "Unknotted_Homologs" in suffix:
+        return f"Unknotted homologs {orig}"
+    if "KnotProt_Homologs" in suffix:
+        return f"KnotProt homologs {orig}"
     return suffix if suffix else class_name
 
 def pair_dir_name(g1: str, g2: str, orig: str) -> str:
@@ -160,9 +176,7 @@ def savefig(fig, path: Path):
     plt.close(fig)
 
 
-# ─────────────────────────────────────────────────────────────
 # DATA LOADING & CLASS DETECTION
-# ─────────────────────────────────────────────────────────────
 
 def load_data() -> pd.DataFrame:
     if not FEATURES_CSV.exists():
@@ -199,9 +213,7 @@ def avail_features(df_sub: pd.DataFrame) -> list:
             and df_sub[f].nunique() > 1]
 
 
-# ─────────────────────────────────────────────────────────────
 # PLOT PRIMITIVES
-# ─────────────────────────────────────────────────────────────
 
 def _violin_box_ax(ax, data_groups, colors, labels):
     all_vals = np.concatenate([d for d in data_groups if len(d)])
@@ -232,20 +244,16 @@ def _violin_box_ax(ax, data_groups, colors, labels):
     # Auto y-axis — no stat brackets
     ax.set_ylim(y_min - pad*0.15, y_max)
     ax.set_xticks(range(n))
-    ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=10)
+    ax.set_xticklabels([textwrap.fill(l, 16) for l in labels], rotation=0, ha="center", fontsize=FS)
     ax.grid(axis="y", alpha=0.2, lw=0.5)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     return y_max
 
 
-# ─────────────────────────────────────────────────────────────
 # OVERVIEW PLOTS
-# ─────────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────────────────────
 # PAIRWISE DEEP-DIVE PLOTS
-# ─────────────────────────────────────────────────────────────
 
 def _curv_ylim_override(feat: str, orig: str):
     """Return (lo, hi, step) if feat is a curvature feature and orig matches a
@@ -270,10 +278,10 @@ def plot_pairwise_violin_per_feature(df_pair, feats, g1, g2, orig, out_dir):
         fig, ax = plt.subplots(figsize=(5, 5.5))
         # auto y-axis via _violin_box_ax with no ylim_override
         _violin_box_ax(ax, [d1, d2], colors, labels)
-        ax.set_ylabel(FEATURE_DISPLAY.get(feat, feat), fontsize=11)
+        ax.set_ylabel(FEATURE_DISPLAY.get(feat, feat), fontsize=FS)
         ax.set_title(f"{FEATURE_DISPLAY.get(feat,feat)}\n"
                      f"{short_label(g1,orig)} vs {short_label(g2,orig)}",
-                     fontsize=10, fontweight="bold")
+                     fontsize=FS_TITLE, fontweight="bold")
         fig.tight_layout()
         savefig(fig, out_dir / f"{feat}.pdf")
 
@@ -293,11 +301,11 @@ def plot_curv_vs_pers_scatter(df_pair, g1, g2, orig, out_path):
                    edgecolors="white", linewidths=1.4)
     ax.axhline(0, color="#AAAAAA", lw=0.9, ls="--", alpha=0.55)
     ax.axvline(0, color="#AAAAAA", lw=0.9, ls="--", alpha=0.55)
-    ax.set_xlabel("Mean H1 Persistence  (death − birth)", fontsize=11)
-    ax.set_ylabel("Mean Forman-Ricci Curvature", fontsize=11)
+    ax.set_xlabel("Mean H1 Persistence  (death − birth)", fontsize=FS)
+    ax.set_ylabel("Mean Forman-Ricci Curvature", fontsize=FS)
     ax.set_title("Persistence vs Curvature  (◆ = group mean)",
-                 fontsize=10, fontweight="bold")
-    ax.legend(fontsize=9, framealpha=0.92, edgecolor="#DDDDDD", fancybox=False)
+                 fontsize=FS_TITLE, fontweight="bold")
+    ax.legend(fontsize=FS_LEG, framealpha=0.92, edgecolor="#DDDDDD", fancybox=False)
     ax.grid(axis="both", alpha=0.13, lw=0.5)
     ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
     fig.tight_layout()
@@ -324,11 +332,11 @@ def plot_pairwise_kde(df_pair, g1, g2, orig, out_dir):
                 ax.fill_between(xs, kde(xs), alpha=0.08, color=col)
             except Exception:
                 pass
-        ax.set_xlabel(label, fontsize=11)
-        ax.set_ylabel("Density", fontsize=11)
+        ax.set_xlabel(label, fontsize=FS)
+        ax.set_ylabel("Density", fontsize=FS)
         ax.set_title(f"{label} - {short_label(g1,orig)} vs {short_label(g2,orig)}",
-                     fontsize=11, fontweight="bold")
-        ax.legend(fontsize=9, framealpha=0.9)
+                     fontsize=FS_TITLE, fontweight="bold")
+        ax.legend(fontsize=FS_LEG, framealpha=0.9)
         ax.grid(alpha=0.2)
         ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
         fig.tight_layout()
@@ -351,12 +359,12 @@ def plot_kde_all_features(df_pair, feats, g1, g2, orig, out_dir):
                 ax.fill_between(xs, kde(xs), alpha=0.08, color=col)
             except Exception:
                 pass
-        ax.set_xlabel(FEATURE_DISPLAY.get(feat, feat), fontsize=10)
-        ax.set_ylabel("Density", fontsize=10)
+        ax.set_xlabel(FEATURE_DISPLAY.get(feat, feat), fontsize=FS)
+        ax.set_ylabel("Density", fontsize=FS)
         ax.set_title(f"{FEATURE_DISPLAY.get(feat,feat)}\n"
                      f"{short_label(g1,orig)} vs {short_label(g2,orig)}",
-                     fontsize=9, fontweight="bold")
-        ax.legend(fontsize=8, framealpha=0.9)
+                     fontsize=FS_TITLE, fontweight="bold")
+        ax.legend(fontsize=FS_LEG, framealpha=0.9)
         ax.grid(alpha=0.2)
         ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
         fig.tight_layout()
@@ -382,9 +390,9 @@ def plot_correlation_curv_vs_h1(df_pair, feats, g1, g2, orig, out_dir):
                 ax.scatter(sub[h1], sub[anchor], c=col, s=28, alpha=0.6,
                            label=short_label(g, orig),
                            edgecolors="white", linewidths=0.3)
-            ax.set_xlabel(FEATURE_DISPLAY.get(h1, h1), fontsize=10)
-            ax.set_ylabel(anchor_label, fontsize=10)
-            ax.legend(fontsize=8, framealpha=0.9)
+            ax.set_xlabel(FEATURE_DISPLAY.get(h1, h1), fontsize=FS)
+            ax.set_ylabel(anchor_label, fontsize=FS)
+            ax.legend(fontsize=FS_LEG, framealpha=0.9)
             ax.grid(alpha=0.15)
             ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
             fig.tight_layout()
@@ -402,10 +410,10 @@ def plot_threeway_violin_per_feature(df_three, three_classes, orig, feats, out_d
         if not any(len(d) for d in dg): continue
         fig, ax = plt.subplots(figsize=(6, 5.5))
         _violin_box_ax(ax, dg, colors, labels)
-        ax.set_ylabel(FEATURE_DISPLAY.get(feat, feat), fontsize=11)
+        ax.set_ylabel(FEATURE_DISPLAY.get(feat, feat), fontsize=FS)
         ax.set_title(f"{FEATURE_DISPLAY.get(feat,feat)}\n"
                      f"{short_label(three_classes[0],orig)} vs Unknotted vs KnotProt",
-                     fontsize=10, fontweight="bold")
+                     fontsize=FS_TITLE, fontweight="bold")
         fig.tight_layout()
         savefig(fig, out_dir / f"{feat}.pdf")
 
@@ -427,11 +435,11 @@ def plot_kde_threeway(df_three, three_classes, orig, feats, out_dir):
                 ax.fill_between(xs, kde(xs), alpha=0.08, color=col)
             except Exception:
                 pass
-        ax.set_xlabel(FEATURE_DISPLAY.get(feat, feat), fontsize=10)
-        ax.set_ylabel("Density", fontsize=10)
+        ax.set_xlabel(FEATURE_DISPLAY.get(feat, feat), fontsize=FS)
+        ax.set_ylabel("Density", fontsize=FS)
         ax.set_title(f"{FEATURE_DISPLAY.get(feat,feat)}\nOriginal vs Unknotted vs KnotProt",
-                     fontsize=9, fontweight="bold")
-        ax.legend(fontsize=9, framealpha=0.9)
+                     fontsize=FS_TITLE, fontweight="bold")
+        ax.legend(fontsize=FS_LEG, framealpha=0.9)
         ax.grid(alpha=0.2)
         ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
         fig.tight_layout()
@@ -455,19 +463,17 @@ def plot_curv_vs_pers_scatter_multi(df_three, three_classes, orig, out_path):
                    edgecolors="white", linewidths=1.4)
     ax.axhline(0, color="#AAAAAA", lw=0.9, ls="--", alpha=0.55)
     ax.axvline(0, color="#AAAAAA", lw=0.9, ls="--", alpha=0.55)
-    ax.set_xlabel("Mean H1 Persistence", fontsize=11)
-    ax.set_ylabel("Mean Forman-Ricci Curvature", fontsize=11)
+    ax.set_xlabel("Mean H1 Persistence", fontsize=FS)
+    ax.set_ylabel("Mean Forman-Ricci Curvature", fontsize=FS)
     ax.set_title("Persistence vs Curvature  (◆ = group mean)\nOriginal vs Unknotted vs KnotProt",
-                 fontsize=10, fontweight="bold")
-    ax.legend(fontsize=9, framealpha=0.92, edgecolor="#DDDDDD", fancybox=False)
+                 fontsize=FS_TITLE, fontweight="bold")
+    ax.legend(fontsize=FS_LEG, framealpha=0.92, edgecolor="#DDDDDD", fancybox=False)
     ax.grid(axis="both", alpha=0.13, lw=0.5)
     ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
     fig.tight_layout()
     savefig(fig, out_path)
 
-# ─────────────────────────────────────────────────────────────
 # FAMILY ORCHESTRATOR
-# ─────────────────────────────────────────────────────────────
 
 def process_family(orig: str, homologs: list, df: pd.DataFrame):
     """
@@ -491,17 +497,17 @@ def process_family(orig: str, homologs: list, df: pd.DataFrame):
     unk_cls = next((h for h in homologs if "Unknotted_Homologs" in h), None)
     kp_cls  = next((h for h in homologs if "KnotProt_Homologs"  in h), None)
 
-    # ── Pairwise: orig vs unknotted ───────────────────────────────────────────
+    # Pairwise: orig vs unknotted
     if unk_cls:
         _plot_pair(orig, unk_cls, orig, df_fam, feats,
                    out / pair_dir_name(orig, unk_cls, orig))
 
-    # ── Pairwise: orig vs knotprot ────────────────────────────────────────────
+    # Pairwise: orig vs knotprot
     if kp_cls:
         _plot_pair(orig, kp_cls, orig, df_fam, feats,
                    out / pair_dir_name(orig, kp_cls, orig))
 
-    # ── Three-group: orig vs unknotted vs knotprot ────────────────────────────
+    # Three-group: orig vs unknotted vs knotprot
     if unk_cls and kp_cls:
         three_dir = out / f"{orig}_vs_Unknotted_vs_KnotProt"
         three_classes = [orig, unk_cls, kp_cls]
@@ -532,9 +538,7 @@ def _plot_pair(g1: str, g2: str, orig: str, df_fam: pd.DataFrame,
 
 
 
-# ─────────────────────────────────────────────────────────────
 # MAIN
-# ─────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(
