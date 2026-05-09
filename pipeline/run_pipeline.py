@@ -1,5 +1,5 @@
 """
-run_pipeline.py — Modular Protein Knot Analysis Pipeline
+run_pipeline.py - Modular Protein Knot Analysis Pipeline
 ----------------------------------------------------------------------------------
 Steps
 -----

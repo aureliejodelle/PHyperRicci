@@ -1,13 +1,16 @@
 """
 curvature_viz.py
 
-Forman-Ricci curvature: knotted vs unknotted proteins across chain lengths.
+Forman-Ricci curvature and H1 median persistence: knotted vs unknotted proteins
+across chain lengths.
 
 Usage
 -----
     from curvature_viz import (
         plot_trend_line_mean, plot_trend_line_median,
         plot_trend_violin_mean, plot_trend_violin_median,
+        plot_trend_line_median_persistence,
+        plot_trend_violin_median_persistence,
         run_all,
     )
     plot_trend_line_mean(Df)
@@ -16,9 +19,10 @@ Usage
 
 DataFrame columns
 -----------------
-    "Curvature"  float  – Forman-Ricci curvature per protein
-    "Type"       str    – "knotted" and "unknotted"
-    "Length"     int    – chain length (100, 150, ..., 500)
+    "Curvature"   float  – Forman-Ricci curvature per protein
+    "Persistence" float  – H1 median persistence per protein
+    "Type"        str    – "knotted" and "unknotted"
+    "Length"      int    – chain length (100, 150, ..., 500)
 """
 
 from __future__ import annotations
@@ -32,28 +36,37 @@ import numpy as np
 import pandas as pd
 from scipy.stats import gaussian_kde
 
-# ------------------------------------------------------------------------------------------
 # Aesthetics
-# ----------------------------------------------------------------------------------------------
 
 mpl.rcParams.update({
-    "font.family":       "sans-serif",
-    "font.sans-serif":   ["Helvetica", "Arial", "DejaVu Sans"],
-    "axes.spines.top":   False,
-    "axes.spines.right": False,
-    "axes.grid":         True,
-    "axes.grid.axis":    "y",
-    "grid.alpha":        0.18,
-    "grid.linewidth":    0.5,
-    "axes.linewidth":    0.8,
-    "pdf.fonttype":      42,
-    "ps.fonttype":       42,
+    "font.family":        "serif",
+    "font.serif":         ["cmr10", "Computer Modern Roman", "DejaVu Serif"],
+    "mathtext.fontset":   "cm",
+    "axes.formatter.use_mathtext": True,
+    "font.size":          11,
+    "axes.titlesize":     11,
+    "axes.labelsize":     11,
+    "xtick.labelsize":    11,
+    "ytick.labelsize":    11,
+    "legend.fontsize":    10,
+    "axes.spines.top":    False,
+    "axes.spines.right":  False,
+    "axes.grid":          True,
+    "axes.grid.axis":     "y",
+    "grid.alpha":         0.18,
+    "grid.linewidth":     0.5,
+    "axes.linewidth":     0.8,
+    "pdf.fonttype":       42,
+    "ps.fonttype":        42,
 })
+
+FS       = 11   # axis labels, tick labels
+FS_TITLE = 11   # plot titles
+FS_LEG   = 10   # legends
 
 COLORS = {"knotted": "#E74C3C", "unknotted": "#2980B9"}
 TYPES  = ["knotted", "unknotted"]
 DPI    = 200
-
 
 
 def _save(fig, path):
@@ -68,7 +81,7 @@ def _show_or_save(fig, out_path):
 def _lengths(df, lengths, length_col):
     return sorted(df[length_col].unique()) if lengths is None else lengths
 
-def _vals(df, L, t, curvature_col, type_col, length_col): # L in {100,150,...500}, t in ["knotted", "unknotted"],curvature_col=curvature value 
+def _vals(df, L, t, curvature_col, type_col, length_col):
     return (df[(df[length_col] == L) & (df[type_col] == t)]
             [curvature_col].dropna().values)
 
@@ -119,10 +132,7 @@ def plot_trend_line_mean(
     ci: float          = 95.0,
     out_path=None,
 ) -> None:
-    """
-    Line plot - MEAN curvature vs chain length.
-    Legend: Knotted / Unknotted only.
-    """
+    """Line plot - MEAN curvature vs chain length."""
     lengths = _lengths(df, lengths, length_col)
     S = _compute_stats(df, lengths, curvature_col, type_col,
                        length_col, np.mean, n_boot, ci)
@@ -132,26 +142,22 @@ def plot_trend_line_mean(
 
     for t in TYPES:
         col = COLORS[t]; s = S[t]; dg = dodge[t]
-        # CI shade
         ax.fill_between(s["xs"], s["lo"], s["hi"], alpha=0.18, color=col)
-        # ±1 SD error bars
         ax.errorbar(s["xs"] + dg, s["centers"],
                     yerr=s["sd"],
                     fmt="none", ecolor=col, elinewidth=1.4,
                     capsize=5, capthick=1.6, alpha=0.85, zorder=3)
-        # trend line
         ax.plot(s["xs"], s["centers"], "-o", color=col, lw=2.2, ms=6,
                 zorder=4, label=t.capitalize())
 
-    ax.set_xlabel("Chain Length (residues)", fontsize=11)
-    ax.set_ylabel("Mean Curvature", fontsize=11)
-    ax.set_title("Mean Curvature vs Chain Length", fontsize=13, fontweight="bold")
+    ax.set_xlabel("Chain Length (residues)", fontsize=FS)
+    ax.set_ylabel("Mean Curvature", fontsize=FS)
+    ax.set_title("Mean Curvature vs Chain Length", fontsize=FS_TITLE, fontweight="bold")
     ax.set_xticks(lengths)
     ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
-    ax.legend(fontsize=10, framealpha=0.85)
+    ax.legend(fontsize=FS_LEG, framealpha=0.85)
     fig.tight_layout()
     _show_or_save(fig, out_path)
-
 
 
 # 2. plot_trend_line_median
@@ -167,10 +173,7 @@ def plot_trend_line_median(
     ci: float          = 95.0,
     out_path=None,
 ) -> None:
-    """
-    Line plot - MEDIAN curvature vs chain length.
-    Legend: Knotted / Unknotted only.
-    """
+    """Line plot - MEDIAN curvature vs chain length."""
     lengths = _lengths(df, lengths, length_col)
     S = _compute_stats(df, lengths, curvature_col, type_col,
                        length_col, np.median, n_boot, ci)
@@ -188,15 +191,14 @@ def plot_trend_line_median(
         ax.plot(s["xs"], s["centers"], "-o", color=col, lw=2.2, ms=6,
                 zorder=4, label=t.capitalize())
 
-    ax.set_xlabel("Chain Length (residues)", fontsize=11)
-    ax.set_ylabel("Median Curvature", fontsize=11)
-    ax.set_title("Median Curvature vs Chain Length", fontsize=13, fontweight="bold")
+    ax.set_xlabel("Chain Length (residues)", fontsize=FS)
+    ax.set_ylabel("Median Curvature", fontsize=FS)
+    ax.set_title("Median Curvature vs Chain Length", fontsize=FS_TITLE, fontweight="bold")
     ax.set_xticks(lengths)
     ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
-    ax.legend(fontsize=10, framealpha=0.85)
+    ax.legend(fontsize=FS_LEG, framealpha=0.85)
     fig.tight_layout()
     _show_or_save(fig, out_path)
-
 
 
 # 3. plot_trend_violin_mean
@@ -214,11 +216,7 @@ def plot_trend_violin_mean(
     bw_method: str      = "scott",
     out_path=None,
 ) -> None:
-    """
-    Violin spine - MEAN curvature vs chain length.
-      - Connecting line: mean trend
-    Legend: Knotted / Unknotted only.
-    """
+    """Violin spine - MEAN curvature vs chain length."""
     lengths = _lengths(df, lengths, length_col)
     S = _compute_stats(df, lengths, curvature_col, type_col,
                        length_col, np.mean, n_boot, ci)
@@ -258,15 +256,14 @@ def plot_trend_violin_mean(
             ax.plot(px, py, "-", color=col, lw=2.0, zorder=3,
                     label=t.capitalize())
 
-    ax.set_xlabel("Chain Length (residues)", fontsize=11)
-    ax.set_ylabel("Mean Curvature", fontsize=11)
-    ax.set_title("Mean Curvature vs Chain Length", fontsize=13, fontweight="bold")
+    ax.set_xlabel("Chain Length (residues)", fontsize=FS)
+    ax.set_ylabel("Mean Curvature", fontsize=FS)
+    ax.set_title("Mean Curvature vs Chain Length", fontsize=FS_TITLE, fontweight="bold")
     ax.set_xticks(lengths)
     ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
-    ax.legend(fontsize=10, framealpha=0.85)
+    ax.legend(fontsize=FS_LEG, framealpha=0.85)
     fig.tight_layout()
     _show_or_save(fig, out_path)
-
 
 
 # 4. plot_trend_violin_median
@@ -284,11 +281,7 @@ def plot_trend_violin_median(
     bw_method: str      = "scott",
     out_path=None,
 ) -> None:
-    """
-    Violin spine - MEDIAN curvature vs chain length.
-      - Connecting line: median trend
-    Legend: Knotted / Unknotted only.
-    """
+    """Violin spine - MEDIAN curvature vs chain length."""
     lengths = _lengths(df, lengths, length_col)
     S = _compute_stats(df, lengths, curvature_col, type_col,
                        length_col, np.median, n_boot, ci)
@@ -328,21 +321,17 @@ def plot_trend_violin_median(
             ax.plot(px, py, "-", color=col, lw=2.0, zorder=3,
                     label=t.capitalize())
 
-    ax.set_xlabel("Chain Length (residues)", fontsize=11)
-    ax.set_ylabel("Median Curvature", fontsize=11)
-    ax.set_title("Median Curvature vs Chain Length", fontsize=13, fontweight="bold")
+    ax.set_xlabel("Chain Length (residues)", fontsize=FS)
+    ax.set_ylabel("Median Curvature", fontsize=FS)
+    ax.set_title("Median Curvature vs Chain Length", fontsize=FS_TITLE, fontweight="bold")
     ax.set_xticks(lengths)
     ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
-    ax.legend(fontsize=10, framealpha=0.85)
+    ax.legend(fontsize=FS_LEG, framealpha=0.85)
     fig.tight_layout()
     _show_or_save(fig, out_path)
 
 
-
-
-# ---------------------------------------------------------------------------------------
 # 5. plot_kde_by_length
-# ------------------------------------------------------------------------------------------
 
 def plot_kde_by_length(
     df: pd.DataFrame,
@@ -354,14 +343,7 @@ def plot_kde_by_length(
     ncols: int         = 3,
     out_path=None,
 ) -> None:
-    """
-    KDE density curves - one subplot per chain length.
-
-    Layout: 3 rows x ncols columns (default 3).
-    Each subplot shows the KDE of knotted (red) and unknotted (blue)
-    curvature values, with a light fill under each curve.
-    Vertical dashed lines mark the group medians.
-    """
+    """KDE density curves - one subplot per chain length."""
     lengths = _lengths(df, lengths, length_col)
     n       = len(lengths)
     nrows   = int(np.ceil(n / ncols))
@@ -388,34 +370,28 @@ def plot_kde_by_length(
             ys = kde(xs)
             ax.plot(xs, ys, color=col, lw=2.0, label=t.capitalize())
             ax.fill_between(xs, ys, alpha=0.10, color=col)
-            # median dashed line
             med = float(np.median(vals))
             ax.axvline(med, color=col, lw=1.1, ls="--", alpha=0.70)
 
-        ax.set_title(f"L = {L}", fontsize=10, fontweight="bold")
-        ax.set_xlabel("Curvature", fontsize=8)
-        ax.set_ylabel("Density",   fontsize=8)
-        ax.tick_params(labelsize=7)
+        ax.set_title(f"L = {L}", fontsize=FS_TITLE, fontweight="bold")
+        ax.set_xlabel("Curvature", fontsize=FS)
+        ax.set_ylabel("Density",   fontsize=FS)
         ax.grid(axis="y", alpha=0.15, lw=0.4)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-    # hide unused axes
     for idx in range(len(lengths), len(axes_flat)):
         axes_flat[idx].set_visible(False)
 
-    # shared legend in the first axis
-    axes_flat[0].legend(fontsize=8, framealpha=0.85)
+    axes_flat[0].legend(fontsize=FS_LEG, framealpha=0.85)
 
     fig.suptitle("KDE - Curvature Distribution per Chain Length",
-                 fontsize=13, fontweight="bold", y=1.01)
+                 fontsize=FS_TITLE, fontweight="bold", y=1.01)
     fig.tight_layout()
-    _show_or_save(fig, out_path) 
+    _show_or_save(fig, out_path)
 
 
-# -----------------------------------------------------------------------------------
 # 6. plot_violin_by_length
-# -----------------------------------------------------------------------------------
 
 def plot_violin_by_length(
     df: pd.DataFrame,
@@ -426,13 +402,7 @@ def plot_violin_by_length(
     ncols: int         = 3,
     out_path=None,
 ) -> None:
-    """
-    Violin + box - one subplot per chain length.
-
-    Layout: 2 rows x ncols columns (default 4).
-    Each subplot shows a violin + inner box for knotted (red) and
-    unknotted (blue). The black horizontal bar is the median.
-    """
+    """Violin + box - one subplot per chain length."""
     lengths = _lengths(df, lengths, length_col)
     n       = len(lengths)
     nrows   = int(np.ceil(n / ncols))
@@ -453,7 +423,6 @@ def plot_violin_by_length(
         ]
         colors = [COLORS[t] for t in TYPES]
 
-        # --- violin ---
         vp = ax.violinplot(
             [g for g in groups if len(g) >= 3],
             positions=[i for i, g in enumerate(groups) if len(g) >= 3],
@@ -467,9 +436,8 @@ def plot_violin_by_length(
             if key in vp:
                 vp[key].set_visible(False)
 
-        # --- box ---
-        valid_data  = [g for g in groups if len(g) >= 3]
-        valid_pos   = [i for i, g in enumerate(groups) if len(g) >= 3]
+        valid_data   = [g for g in groups if len(g) >= 3]
+        valid_pos    = [i for i, g in enumerate(groups) if len(g) >= 3]
         valid_colors = [colors[i] for i in valid_pos]
 
         if valid_data:
@@ -488,67 +456,214 @@ def plot_violin_by_length(
                 bp["boxes"][bi].set_alpha(0.75)
 
         ax.set_xticks([0, 1])
-        ax.set_xticklabels([t.capitalize() for t in TYPES], fontsize=7.5)
-        ax.set_title(f"L = {L}", fontsize=10, fontweight="bold")
-        ax.set_ylabel("Curvature", fontsize=8)
-        ax.tick_params(axis="y", labelsize=7)
+        ax.set_xticklabels([t.capitalize() for t in TYPES], fontsize=FS)
+        ax.set_title(f"L = {L}", fontsize=FS_TITLE, fontweight="bold")
+        ax.set_ylabel("Curvature", fontsize=FS)
         ax.grid(axis="y", alpha=0.15, lw=0.4)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-    # hide unused axes
     for idx in range(len(lengths), len(axes_flat)):
         axes_flat[idx].set_visible(False)
 
-    # shared colour legend
     from matplotlib.patches import Patch
     legend_handles = [
         Patch(facecolor=COLORS[t], alpha=0.75, label=t.capitalize())
         for t in TYPES
     ]
-    fig.legend(handles=legend_handles, fontsize=9, framealpha=0.85,
+    fig.legend(handles=legend_handles, fontsize=FS_LEG, framealpha=0.85,
                loc="lower right", ncol=2)
 
     fig.suptitle("Violin + Box - Curvature per Chain Length",
-                 fontsize=13, fontweight="bold", y=1.01)
+                 fontsize=FS_TITLE, fontweight="bold", y=1.01)
     fig.tight_layout()
     _show_or_save(fig, out_path)
+
+
+# 7. plot_trend_line_median_persistence
+
+def plot_trend_line_median_persistence(
+    df: pd.DataFrame,
+    lengths=None,
+    persistence_col: str = "Persistence",
+    type_col: str        = "Type",
+    length_col: str      = "Length",
+    n_boot: int          = 1000,
+    ci: float            = 95.0,
+    out_path=None,
+) -> None:
+    """Line plot - MEDIAN H1 persistence vs chain length."""
+    lengths = _lengths(df, lengths, length_col)
+    S = _compute_stats(df, lengths, persistence_col, type_col,
+                       length_col, np.median, n_boot, ci)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    dodge = {"knotted": -3.0, "unknotted": +3.0}
+
+    for t in TYPES:
+        col = COLORS[t]; s = S[t]; dg = dodge[t]
+        ax.fill_between(s["xs"], s["lo"], s["hi"], alpha=0.18, color=col)
+        ax.errorbar(s["xs"] + dg, s["centers"],
+                    yerr=s["sd"],
+                    fmt="none", ecolor=col, elinewidth=1.4,
+                    capsize=5, capthick=1.6, alpha=0.85, zorder=3)
+        ax.plot(s["xs"], s["centers"], "-o", color=col, lw=2.2, ms=6,
+                zorder=4, label=t.capitalize())
+
+    ax.set_xlabel("Chain Length (residues)", fontsize=FS)
+    ax.set_ylabel("Median H1 Persistence", fontsize=FS)
+    ax.set_title("Median H1 Persistence vs Chain Length", fontsize=FS_TITLE, fontweight="bold")
+    ax.set_xticks(lengths)
+    ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
+    ax.legend(fontsize=FS_LEG, framealpha=0.85)
+    fig.tight_layout()
+    _show_or_save(fig, out_path)
+
+
+# 8. plot_trend_violin_median_persistence
+
+def plot_trend_violin_median_persistence(
+    df: pd.DataFrame,
+    lengths=None,
+    persistence_col: str = "Persistence",
+    type_col: str        = "Type",
+    length_col: str      = "Length",
+    n_boot: int          = 1000,
+    ci: float            = 95.0,
+    violin_width: float  = 16.0,
+    bw_method: str       = "scott",
+    out_path=None,
+) -> None:
+    """Violin spine - MEDIAN H1 persistence vs chain length."""
+    lengths = _lengths(df, lengths, length_col)
+    S = _compute_stats(df, lengths, persistence_col, type_col,
+                       length_col, np.median, n_boot, ci)
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    sign  = {"knotted": -1, "unknotted": +1}
+    dodge = {"knotted": -violin_width * 0.4, "unknotted": +violin_width * 0.4}
+
+    for t in TYPES:
+        col = COLORS[t]; s = S[t]
+        spine_pts = []
+
+        for i, (L, vals) in enumerate(zip(lengths, s["all_vals"])):
+            if len(vals) < 4:
+                continue
+            xc = float(L) + dodge[t]
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                kde = gaussian_kde(vals, bw_method=bw_method)
+            yr = np.linspace(vals.min(), vals.max(), 300)
+            d  = kde(yr); d = d / d.max() * violin_width * 0.85
+            ax.fill_betweenx(yr, xc, xc + sign[t] * d, alpha=0.22, color=col)
+            ax.plot(xc + sign[t] * d, yr, lw=0.7, color=col, alpha=0.5)
+
+            med = s["centers"][i]
+            if not np.isfinite(med):
+                continue
+            ax.plot([xc, xc], [s["lo"][i], s["hi"][i]],
+                    color=col, lw=2.0, solid_capstyle="round", zorder=4)
+            ax.scatter(xc, med, color=col, s=55, marker="D", zorder=6,
+                       edgecolors="white", linewidths=0.9)
+            spine_pts.append((xc, med))
+
+        if spine_pts:
+            px, py = zip(*spine_pts)
+            ax.plot(px, py, "-", color=col, lw=2.0, zorder=3,
+                    label=t.capitalize())
+
+    ax.set_xlabel("Chain Length (residues)", fontsize=FS)
+    ax.set_ylabel("Median H1 Persistence", fontsize=FS)
+    ax.set_title("Median H1 Persistence vs Chain Length", fontsize=FS_TITLE, fontweight="bold")
+    ax.set_xticks(lengths)
+    ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
+    ax.legend(fontsize=FS_LEG, framealpha=0.85)
+    fig.tight_layout()
+    _show_or_save(fig, out_path)
+
+
+# Data loading helpers (mirror notebook logic + add persistence)
+
+import json as _json
+
+def _load_ph(outputs_dir, ptype, L, j):
+    path = Path(outputs_dir) / f"{ptype}_jodelle_{L}_{j}_ph.json"
+    with open(path) as f:
+        return _json.load(f)
+
+def _adjacency(ph, L):
+    M = np.zeros((L, len(ph["barcode"][0])))
+    for i, rep in enumerate(ph["representatives"]):
+        for j in rep:
+            M[j - 1, i] = 1
+    return M
+
+def _mean_curvature(M):
+    n_edges = M.shape[1]
+    curv = np.empty(n_edges)
+    for e in range(n_edges):
+        verts = np.where(M[:, e] == 1)[0]
+        D = sum(np.sum(M[k, :]) for k in verts)
+        curv[e] = 2 * len(verts) - D
+    return float(np.mean(curv))
+
+def _median_persistence(ph):
+    births = np.array(ph["barcode"][0])
+    deaths = np.array(ph["barcode"][1])
+    return float(np.median(deaths - births))
+
+def load_real_data(outputs_dir="outputs",
+                   lengths=(100, 150, 200, 250, 300, 350, 400, 450, 500),
+                   n_files=10):
+    """Load knotted/unknotted JSON data and return a DataFrame with
+    Curvature, Persistence, Type, and Length columns."""
+    rows = []
+    for L in lengths:
+        print(f"  L={L} ...", end=" ", flush=True)
+        for ptype, label in (("knots", "knotted"), ("unknots", "unknotted")):
+            all_ph = []
+            for j in range(n_files):
+                all_ph.extend(_load_ph(outputs_dir, ptype, L, j))
+            for ph in all_ph:
+                M   = _adjacency(ph, L)
+                curv = _mean_curvature(M)
+                pers = _median_persistence(ph)
+                rows.append({"Curvature": curv, "Persistence": pers,
+                              "Type": label, "Length": L})
+        print("done")
+    return pd.DataFrame(rows)
 
 
 # run_all
 
 
 def run_all(df, lengths=None, out_dir=None):
-    """Run all four plots. Pass out_dir='plots' to save as PDFs."""
+    """Run all plots. Pass out_dir='plots' to save as PDFs."""
     def _p(name):
         return (Path(out_dir) / f"{name}.pdf") if out_dir else None
-    print("1/4  trend line   - mean ...");   plot_trend_line_mean(df,      lengths=lengths, out_path=_p("trend_line_mean"))
-    print("2/4  trend line   - median ..."); plot_trend_line_median(df,    lengths=lengths, out_path=_p("trend_line_median"))
-    print("3/4  trend violin - mean ...");   plot_trend_violin_mean(df,    lengths=lengths, out_path=_p("trend_violin_mean"))
-    print("4/4  trend violin - median ..."); plot_trend_violin_median(df,  lengths=lengths, out_path=_p("trend_violin_median"))
-    print("5/6  KDE by length ...");            plot_kde_by_length(df,          lengths=lengths, out_path=_p("kde_by_length"))
-    print("6/6  violin by length ...");         plot_violin_by_length(df,       lengths=lengths, out_path=_p("violin_by_length"))
+    print("1/8  trend line   - mean curvature ...");        plot_trend_line_mean(df,                      lengths=lengths, out_path=_p("trend_line_mean"))
+    print("2/8  trend line   - median curvature ...");      plot_trend_line_median(df,                    lengths=lengths, out_path=_p("trend_line_median"))
+    print("3/8  trend violin - mean curvature ...");        plot_trend_violin_mean(df,                    lengths=lengths, out_path=_p("trend_violin_mean"))
+    print("4/8  trend violin - median curvature ...");      plot_trend_violin_median(df,                  lengths=lengths, out_path=_p("trend_violin_median"))
+    print("5/8  KDE by length ...");                        plot_kde_by_length(df,                        lengths=lengths, out_path=_p("kde_by_length"))
+    print("6/8  violin by length ...");                     plot_violin_by_length(df,                     lengths=lengths, out_path=_p("violin_by_length"))
+    print("7/8  trend line   - median persistence ...");    plot_trend_line_median_persistence(df,         lengths=lengths, out_path=_p("trend_line_median_persistence"))
+    print("8/8  trend violin - median persistence ...");    plot_trend_violin_median_persistence(df,       lengths=lengths, out_path=_p("trend_violin_median_persistence"))
     print("Done.")
 
 
-
-# CLI demo   python curvature_viz.py --out_dir plots/
+# python curvature_viz.py [--out_dir my_plots] [--outputs_dir outputs]
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out_dir", default="plots_clean")
+    parser.add_argument("--out_dir",     default="my_plots")
+    parser.add_argument("--outputs_dir", default="outputs")
     args = parser.parse_args()
 
-    rng = np.random.default_rng(0)
-    lengths = [100, 150, 200, 250, 300, 350, 400, 450, 500]
-    rows = []
-    for L in lengths:
-        n = 500
-        k = rng.normal(loc=-0.30 - L * 0.0005, scale=0.30 + L * 0.0003, size=n)
-        u = rng.normal(loc=-0.10 - L * 0.0002, scale=0.40 + L * 0.0002, size=n)
-        for v in k: rows.append({"Curvature": v, "Type": "knotted",   "Length": L})
-        for v in u: rows.append({"Curvature": v, "Type": "unknotted", "Length": L})
-
-    Df = pd.DataFrame(rows)
+    print("Loading data from", args.outputs_dir)
+    Df = load_real_data(outputs_dir=args.outputs_dir)
+    print(f"DataFrame: {len(Df)} rows\n{Df.head()}\n")
     run_all(Df, out_dir=args.out_dir)
