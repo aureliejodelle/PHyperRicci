@@ -338,10 +338,13 @@ def apply_fdr(results_df: pd.DataFrame) -> pd.DataFrame:
                 return np.nan
             orig = row.get("original_class", "")
             hom  = row.get("homolog_class",  "")
+            # diff = median(original) - median(homolog); curvatures are negative,
+            # so "more negative" means the SMALLER median. diff > 0 therefore means
+            # the original is LESS negative and the homolog is the more-negative group.
             if diff > 0.05:
-                return f"{orig}_more_negative"
-            elif diff < -0.05:
                 return f"{hom}_more_negative"
+            elif diff < -0.05:
+                return f"{orig}_more_negative"
             return "no_dominant_direction"
         results_df["chirality"] = results_df.apply(_chir, axis=1)
 

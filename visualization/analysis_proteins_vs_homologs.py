@@ -12,9 +12,10 @@ PDB_Homologs folders are intentionally ignored.
 Output layout:
   results/comparison/<OriginalClass>/
     <Original>_vs_Unknotted_Homologs/
-        feature_distributions/   ← violin per feature, auto y-axis
-        kde_plots/
-        correlation/             ← Curv_mean|median vs H1 features only
+        feature_distributions/    violin per feature, auto y-axis
+        kde_plots/                smoothed density (kept)
+        hist_plots/               un-smoothed histograms (shared bins) — added
+        correlation/              Curv_mean|median vs H1 features only
         curv_vs_pers_scatter.pdf
 
     <Original>_vs_KnotProt_Homologs/
@@ -22,7 +23,8 @@ Output layout:
 
     <Original>_vs_Unknotted_vs_KnotProt/
         feature_distributions/
-        kde_plots/
+        kde_plots/                smoothed density (kept)
+        hist_plots/               un-smoothed histograms (shared bins) — added
         curv_vs_pers_scatter.pdf
 
 No statistics. No overview folder. No PDB_Homologs.
@@ -30,7 +32,6 @@ No statistics. No overview folder. No PDB_Homologs.
 Usage:
   python analysis_proteins_vs_homologs.py
   python analysis_proteins_vs_homologs.py --class AOTCases
-  python analysis_proteins_vs_homologs.py --stats-only
 """
 
 from __future__ import annotations
@@ -44,11 +45,9 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
 from datetime import datetime
 from scipy.stats import gaussian_kde
-from statsmodels.stats.multitest import multipletests
 
 warnings.filterwarnings("ignore")
 sys.path.append(str(Path(__file__).parent))
@@ -77,7 +76,7 @@ mpl.rcParams.update({
     "ps.fonttype":        42,
 })
 
-# Single font-size constants — change here, takes effect everywhere
+# Single font-size constants  change here, takes effect everywhere
 FS       = 11   # axis labels, tick labels
 FS_TITLE = 11   # plot titles
 FS_LEG   = 10   # legends
@@ -86,7 +85,6 @@ FS_LEG   = 10   # legends
 FEATURES_CSV = None
 COMPARE_ROOT = None
 DPI          = 200
-STATS_ONLY   = False
 
 
 def _resolve_paths():
@@ -126,18 +124,6 @@ _ROLE_COLORS = {
     "knotprot":  "#27AE60",
     "original":  "#C0392B",
 }
-_FALLBACK_PALETTE = ["#C0392B","#2980B9","#27AE60","#8E44AD",
-                     "#E67E22","#16A085","#D35400","#95A5A6"]
-
-# Per-class y-axis limits for curvature violin plots.
-# Key: substring that must appear in the original class name (case-insensitive).
-# Value: (y_min, y_max, step)  — applied to any Curv_* feature violin for that class.
-_CURV_YLIM = {
-    "K41":   (-26,   -14,  2.0),
-    "S41":   (-32.5, -17.5, 2.0),
-    "Kplus": (-35,    -5,  5.0),
-    "Splus": (-35,   -10,  2.5),
-}
 
 
 def _role_key(class_name: str, orig: str) -> str:
@@ -150,25 +136,32 @@ def _role_key(class_name: str, orig: str) -> str:
 def group_color(class_name: str, orig: str) -> str:
     return _ROLE_COLORS.get(_role_key(class_name, orig), "#C0392B")
 
+_DISPLAY_NAMES = {
+    "Kplus31":  "K+3(1)",
+    "Splus31":  "S+3(1)",
+    "K41":      "K4(1)",
+    "S41":      "S4(1)",
+    "Kminus31": "K-3(1)",
+    "Sminus31": "S-3(1)",
+    "Kminus52": "K-5(2)",
+}
+
+def _pretty(name: str) -> str:
+    """Return the display name for a class, falling back to the original."""
+    return _DISPLAY_NAMES.get(name, name)
+
 def short_label(class_name: str, orig: str) -> str:
     if class_name == orig:
-        return orig
+        return _pretty(orig)
     suffix = class_name[len(orig):].lstrip("_")
     if "Unknotted_Homologs" in suffix:
-        return f"Unknotted homologs {orig}"
+        return f"Unknotted homologs {_pretty(orig)}"
     if "KnotProt_Homologs" in suffix:
-        return f"KnotProt homologs {orig}"
-    return suffix if suffix else class_name
+        return f"KnotProt homologs {_pretty(orig)}"
+    return suffix if suffix else _pretty(class_name)
 
 def pair_dir_name(g1: str, g2: str, orig: str) -> str:
     return f"{short_label(g1,orig)}_vs_{short_label(g2,orig)}"
-
-def stars(p: float) -> str:
-    if p < 0.0001: return "****"
-    if p < 0.001:  return "***"
-    if p < 0.01:   return "**"
-    if p < 0.05:   return "*"
-    return "ns"
 
 def savefig(fig, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -189,7 +182,7 @@ def load_data() -> pd.DataFrame:
 def detect_families(df: pd.DataFrame) -> dict:
     """
     Auto-detect homolog families.
-    PDB_Homologs are excluded — only Unknotted_Homologs and
+    PDB_Homologs are excluded  only Unknotted_Homologs and
     KnotProt_Homologs are used as comparator groups.
     """
     all_cls = sorted(df["Protein_Class"].unique())
@@ -241,7 +234,7 @@ def _violin_box_ax(ax, data_groups, colors, labels):
     for i, box in enumerate(bp["boxes"]):
         box.set_facecolor(colors[i]); box.set_alpha(0.8)
 
-    # Auto y-axis — no stat brackets
+    # Auto y-axis  no stat brackets
     ax.set_ylim(y_min - pad*0.15, y_max)
     ax.set_xticks(range(n))
     ax.set_xticklabels([textwrap.fill(l, 16) for l in labels], rotation=0, ha="center", fontsize=FS)
@@ -254,17 +247,6 @@ def _violin_box_ax(ax, data_groups, colors, labels):
 # OVERVIEW PLOTS
 
 # PAIRWISE DEEP-DIVE PLOTS
-
-def _curv_ylim_override(feat: str, orig: str):
-    """Return (lo, hi, step) if feat is a curvature feature and orig matches a
-    known class key in _CURV_YLIM, otherwise return None."""
-    if not feat.startswith("Curv_"):
-        return None
-    for key, limits in _CURV_YLIM.items():
-        if key.lower() in orig.lower():
-            return limits
-    return None
-
 
 def plot_pairwise_violin_per_feature(df_pair, feats, g1, g2, orig, out_dir):
     """Violin+box per feature, two groups, auto y-axis, no stat brackets."""
@@ -312,35 +294,54 @@ def plot_curv_vs_pers_scatter(df_pair, g1, g2, orig, out_path):
     savefig(fig, out_path)
 
 
-def plot_pairwise_kde(df_pair, g1, g2, orig, out_dir):
+def _shared_bins(value_arrays, max_bins=30):
+    """
+    Compute a common set of histogram bin edges across several groups so the
+    two/three populations are binned identically and can be compared fairly.
+    Uses the Freedman-Diaconis rule on the pooled data, clamped to a sensible
+    number of bins.
+    """
+    pooled = np.concatenate([v for v in value_arrays if len(v)])
+    if len(pooled) < 2:
+        return np.linspace(pooled.min() - 0.5, pooled.max() + 0.5, 3) if len(pooled) else np.array([0, 1])
+    lo, hi = float(pooled.min()), float(pooled.max())
+    if hi <= lo:
+        return np.linspace(lo - 0.5, lo + 0.5, 3)
+    q1, q3 = np.percentile(pooled, [25, 75])
+    iqr = q3 - q1
+    if iqr > 0:
+        width = 2 * iqr / (len(pooled) ** (1.0 / 3.0))
+        n_bins = int(np.clip(np.ceil((hi - lo) / width), 5, max_bins)) if width > 0 else 15
+    else:
+        n_bins = 15
+    return np.linspace(lo, hi, n_bins + 1)
+
+
+def plot_hist_all_features(df_pair, feats, g1, g2, orig, out_dir):
+    """Overlaid density histogram per feature, shared bins, two groups."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    for feat, label in [("H1_mean",    "Mean Persistence"),
-                        ("H1_median",  "Median Persistence"),
-                        ("Curv_mean",  "Mean Curvature"),
-                        ("Curv_median","Median Curvature")]:
-        if feat not in df_pair.columns: continue
-        fig, ax = plt.subplots(figsize=(6.5, 4.5))
-        for g in [g1, g2]:
-            vals = df_pair[df_pair["Protein_Class"]==g][feat].dropna().values
-            if len(vals) < 4: continue
-            try:
-                kde = gaussian_kde(vals, bw_method="scott")
-                xs  = np.linspace(vals.min(), vals.max(), 300)
-                col = group_color(g, orig)
-                ax.plot(xs, kde(xs), color=col, lw=2.2,
-                        label=f"{short_label(g,orig)} (n={len(vals)})")
-                ax.fill_between(xs, kde(xs), alpha=0.08, color=col)
-            except Exception:
-                pass
-        ax.set_xlabel(label, fontsize=FS)
+    for feat in feats:
+        v1 = df_pair[df_pair["Protein_Class"]==g1][feat].dropna().values
+        v2 = df_pair[df_pair["Protein_Class"]==g2][feat].dropna().values
+        if len(v1) < 2 and len(v2) < 2: continue
+        bins = _shared_bins([v1, v2])
+        fig, ax = plt.subplots(figsize=(6, 4))
+        for g, vals in [(g1, v1), (g2, v2)]:
+            if len(vals) < 1: continue
+            col = group_color(g, orig)
+            ax.hist(vals, bins=bins, density=True, alpha=0.45, color=col,
+                    edgecolor=col, linewidth=0.8,
+                    label=f"{short_label(g,orig)} (n={len(vals)})")
+        ax.set_xlabel(FEATURE_DISPLAY.get(feat, feat), fontsize=FS)
         ax.set_ylabel("Density", fontsize=FS)
-        ax.set_title(f"{label} - {short_label(g1,orig)} vs {short_label(g2,orig)}",
+        ax.set_title(f"{FEATURE_DISPLAY.get(feat,feat)}\n"
+                     f"{short_label(g1,orig)} vs {short_label(g2,orig)}",
                      fontsize=FS_TITLE, fontweight="bold")
         ax.legend(fontsize=FS_LEG, framealpha=0.9)
         ax.grid(alpha=0.2)
         ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
         fig.tight_layout()
-        savefig(fig, out_dir / f"kde_{feat}.pdf")
+        savefig(fig, out_dir / f"{feat}.pdf")
 
 
 def plot_kde_all_features(df_pair, feats, g1, g2, orig, out_dir):
@@ -365,6 +366,43 @@ def plot_kde_all_features(df_pair, feats, g1, g2, orig, out_dir):
                      f"{short_label(g1,orig)} vs {short_label(g2,orig)}",
                      fontsize=FS_TITLE, fontweight="bold")
         ax.legend(fontsize=FS_LEG, framealpha=0.9)
+        ax.grid(alpha=0.2)
+        ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
+        fig.tight_layout()
+        savefig(fig, out_dir / f"{feat}.pdf")
+
+
+def plot_pairwise_ecdf(df_pair, feats, g1, g2, orig, out_dir):
+    """ECDF per feature, two groups. No binning, plots every point as a step."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    colors = [group_color(g1, orig), group_color(g2, orig)]
+    for feat in feats:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        drawn = False
+        for g, col in zip([g1, g2], colors):
+            vals = df_pair[df_pair["Protein_Class"]==g][feat].dropna().values
+            if len(vals) < 1: continue
+            xs = np.sort(vals)
+            ys = np.arange(1, len(xs) + 1) / len(xs)
+            # start the curve flat at 0 before the first point
+            ax.step(np.concatenate([xs[:1], xs]),
+                    np.concatenate([[0.0], ys]),
+                    where="post", color=col, lw=2,
+                    label=f"{short_label(g,orig)} (n={len(vals)})")
+            # rug of the raw values along the bottom
+            ax.plot(xs, np.full_like(xs, -0.02, dtype=float), "|",
+                    color=col, ms=6, mew=0.8, alpha=0.6, clip_on=False)
+            drawn = True
+        if not drawn:
+            plt.close(fig); continue
+        ax.axhline(0.5, color="#AAAAAA", lw=0.8, ls=":", alpha=0.7)
+        ax.set_ylim(-0.04, 1.02)
+        ax.set_xlabel(FEATURE_DISPLAY.get(feat, feat), fontsize=FS)
+        ax.set_ylabel("Cumulative fraction", fontsize=FS)
+        ax.set_title(f"{FEATURE_DISPLAY.get(feat,feat)}\n"
+                     f"{short_label(g1,orig)} vs {short_label(g2,orig)}",
+                     fontsize=FS_TITLE, fontweight="bold")
+        ax.legend(fontsize=FS_LEG, framealpha=0.9, loc="lower right")
         ax.grid(alpha=0.2)
         ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
         fig.tight_layout()
@@ -446,6 +484,32 @@ def plot_kde_threeway(df_three, three_classes, orig, feats, out_dir):
         savefig(fig, out_dir / f"{feat}.pdf")
 
 
+def plot_hist_threeway(df_three, three_classes, orig, feats, out_dir):
+    """Overlaid density histogram per feature, shared bins, three groups."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    colors = [group_color(g, orig) for g in three_classes]
+    for feat in feats:
+        arrays = [df_three[df_three["Protein_Class"]==g][feat].dropna().values
+                  for g in three_classes]
+        if not any(len(a) >= 2 for a in arrays): continue
+        bins = _shared_bins(arrays)
+        fig, ax = plt.subplots(figsize=(6, 4))
+        for g, col, vals in zip(three_classes, colors, arrays):
+            if len(vals) < 1: continue
+            ax.hist(vals, bins=bins, density=True, alpha=0.40, color=col,
+                    edgecolor=col, linewidth=0.8,
+                    label=f"{short_label(g,orig)} (n={len(vals)})")
+        ax.set_xlabel(FEATURE_DISPLAY.get(feat, feat), fontsize=FS)
+        ax.set_ylabel("Density", fontsize=FS)
+        ax.set_title(f"{FEATURE_DISPLAY.get(feat,feat)}\nOriginal vs Unknotted vs KnotProt",
+                     fontsize=FS_TITLE, fontweight="bold")
+        ax.legend(fontsize=FS_LEG, framealpha=0.9)
+        ax.grid(alpha=0.2)
+        ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
+        fig.tight_layout()
+        savefig(fig, out_dir / f"{feat}.pdf")
+
+
 def plot_curv_vs_pers_scatter_multi(df_three, three_classes, orig, out_path):
     """Curvature vs persistence scatter for three groups."""
     if "Curv_mean" not in df_three.columns or "H1_mean" not in df_three.columns: return
@@ -480,7 +544,7 @@ def process_family(orig: str, homologs: list, df: pd.DataFrame):
     Produce three comparison folders per family:
       1. <orig>_vs_Unknotted_Homologs/
       2. <orig>_vs_KnotProt_Homologs/
-      3. <orig>_vs_Unknotted_vs_KnotProt/   ← three-group
+      3. <orig>_vs_Unknotted_vs_KnotProt/    three-group
 
     No statistics are run here. No overview folder.
     Plots:
@@ -491,7 +555,6 @@ def process_family(orig: str, homologs: list, df: pd.DataFrame):
     """
     out = COMPARE_ROOT / orig
     df_fam = df[df["Protein_Class"].isin([orig] + homologs)].copy()
-    feats  = avail_features(df_fam)
 
     # Identify unknotted and knotprot homologs
     unk_cls = next((h for h in homologs if "Unknotted_Homologs" in h), None)
@@ -499,17 +562,17 @@ def process_family(orig: str, homologs: list, df: pd.DataFrame):
 
     # Pairwise: orig vs unknotted
     if unk_cls:
-        _plot_pair(orig, unk_cls, orig, df_fam, feats,
+        _plot_pair(orig, unk_cls, orig, df_fam,
                    out / pair_dir_name(orig, unk_cls, orig))
 
     # Pairwise: orig vs knotprot
     if kp_cls:
-        _plot_pair(orig, kp_cls, orig, df_fam, feats,
+        _plot_pair(orig, kp_cls, orig, df_fam,
                    out / pair_dir_name(orig, kp_cls, orig))
 
     # Three-group: orig vs unknotted vs knotprot
     if unk_cls and kp_cls:
-        three_dir = out / f"{orig}_vs_Unknotted_vs_KnotProt"
+        three_dir = out / f"{_pretty(orig)}_vs_Unknotted_vs_KnotProt"
         three_classes = [orig, unk_cls, kp_cls]
         df_three = df_fam[df_fam["Protein_Class"].isin(three_classes)].copy()
         feats_3  = avail_features(df_three)
@@ -517,18 +580,22 @@ def process_family(orig: str, homologs: list, df: pd.DataFrame):
                                          three_dir / "feature_distributions")
         plot_kde_threeway(df_three, three_classes, orig, feats_3,
                           three_dir / "kde_plots")
+        plot_hist_threeway(df_three, three_classes, orig, feats_3,
+                           three_dir / "hist_plots")
         plot_curv_vs_pers_scatter_multi(df_three, three_classes, orig,
                                         three_dir / "curv_vs_pers_scatter.pdf")
 
 
 def _plot_pair(g1: str, g2: str, orig: str, df_fam: pd.DataFrame,
-               feats: list, pair_dir: Path):
+               pair_dir: Path):
     """All plots for one pairwise comparison (no stats)."""
     df_pair = df_fam[df_fam["Protein_Class"].isin([g1, g2])].copy()
     feats_p = avail_features(df_pair)
     plot_pairwise_violin_per_feature(df_pair, feats_p, g1, g2, orig,
                                      pair_dir / "feature_distributions")
     plot_kde_all_features(df_pair, feats_p, g1, g2, orig, pair_dir / "kde_plots")
+    plot_hist_all_features(df_pair, feats_p, g1, g2, orig, pair_dir / "hist_plots")
+    plot_pairwise_ecdf(df_pair, feats_p, g1, g2, orig, pair_dir / "ecdf_plots")
     plot_correlation_curv_vs_h1(df_pair, feats_p, g1, g2, orig,
                                  pair_dir / "correlation")
     plot_curv_vs_pers_scatter(df_pair, g1, g2, orig,
@@ -542,31 +609,23 @@ def _plot_pair(g1: str, g2: str, orig: str, df_fam: pd.DataFrame,
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Script 1 — Protein vs homolog analysis (Mann-Whitney U + Cliff's delta)",
+        description="Script 1  Protein vs homolog analysis (plots only, no statistics)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--class", dest="cls", default=None,
                         help="Analyse one family only, e.g. AOTCases")
-    parser.add_argument("--stats-only", dest="stats_only",
-                        action="store_true", default=False,
-                        help="Run statistics only. Skip all plots.")
     args = parser.parse_args()
     _resolve_paths()
-
-    global STATS_ONLY
-    STATS_ONLY = args.stats_only
 
     print("=" * 65)
     print("PROTEIN vs HOMOLOG ANALYSIS  (Unknotted + KnotProt | no PDB)")
     print("Comparators: Unknotted_Homologs + KnotProt_Homologs (PDB excluded)")
     print("=" * 65)
-    print(f"Mode    : {'stats only' if STATS_ONLY else 'full (stats + plots)'}")
     print(f"Start   : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Input   : {FEATURES_CSV}")
     print(f"Output  : {COMPARE_ROOT}\n")
 
-    df    = load_data()
-    feats = avail_features(df)
+    df = load_data()
 
     families = detect_families(df)
     if not families:
