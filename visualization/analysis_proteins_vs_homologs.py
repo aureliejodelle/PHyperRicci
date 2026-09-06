@@ -14,7 +14,7 @@ Output layout:
     <Original>_vs_Unknotted_Homologs/
         feature_distributions/    violin per feature, auto y-axis
         kde_plots/                smoothed density
-        hist_plots/               un-smoothed histograms (shared bins) 
+        hist_plots/               un-smoothed histograms (shared bins)
         correlation/              Curv_mean|median vs H1 features only
         curv_vs_pers_scatter.pdf
 
@@ -24,10 +24,10 @@ Output layout:
     <Original>_vs_Unknotted_vs_KnotProt/
         feature_distributions/
         kde_plots/                smoothed density
-        hist_plots/               un-smoothed histograms (shared bins) 
+        hist_plots/               un-smoothed histograms (shared bins)
         curv_vs_pers_scatter.pdf
 
-
+No statistics. No overview folder. No PDB_Homologs.
 
 Usage:
   python analysis_proteins_vs_homologs.py
@@ -76,7 +76,7 @@ mpl.rcParams.update({
     "ps.fonttype":        42,
 })
 
-
+# Single font-size 
 FS       = 11   # axis labels, tick labels
 FS_TITLE = 11   # plot titles
 FS_LEG   = 10   # legends
@@ -249,7 +249,7 @@ def _violin_box_ax(ax, data_groups, colors, labels):
 # PAIRWISE DEEP-DIVE PLOTS
 
 def plot_pairwise_violin_per_feature(df_pair, feats, g1, g2, orig, out_dir):
-    """Violin+box per feature, two groups, auto y-axis, no stat brackets."""
+    """Violin+box per feature"""
     colors = [group_color(g1, orig), group_color(g2, orig)]
     labels = [short_label(g1, orig), short_label(g2, orig)]
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -258,7 +258,7 @@ def plot_pairwise_violin_per_feature(df_pair, feats, g1, g2, orig, out_dir):
         d2 = df_pair[df_pair["Protein_Class"]==g2][feat].dropna().values
         if not (len(d1) and len(d2)): continue
         fig, ax = plt.subplots(figsize=(5, 5.5))
-       
+        # auto y-axis via _violin_box_ax with no ylim_override
         _violin_box_ax(ax, [d1, d2], colors, labels)
         ax.set_ylabel(FEATURE_DISPLAY.get(feat, feat), fontsize=FS)
         ax.set_title(f"{FEATURE_DISPLAY.get(feat,feat)}\n"
@@ -296,10 +296,8 @@ def plot_curv_vs_pers_scatter(df_pair, g1, g2, orig, out_path):
 
 def _shared_bins(value_arrays, max_bins=30):
     """
-    Compute a common set of histogram bin edges across several groups so the
-    populations are binned identically and can be compared fairly.
-    Uses the Freedman-Diaconis rule on the pooled data, clamped to a sensible
-    number of bins.
+    Compute a common set of histogram bin edges across several groups .
+    Uses the Freedman-Diaconis rule .
     """
     pooled = np.concatenate([v for v in value_arrays if len(v)])
     if len(pooled) < 2:
@@ -318,7 +316,7 @@ def _shared_bins(value_arrays, max_bins=30):
 
 
 def plot_hist_all_features(df_pair, feats, g1, g2, orig, out_dir):
-    """Overlaid density histogram per feature, shared bins, two groups."""
+    """Overlaid density histogram per feature."""
     out_dir.mkdir(parents=True, exist_ok=True)
     for feat in feats:
         v1 = df_pair[df_pair["Protein_Class"]==g1][feat].dropna().values
@@ -373,7 +371,7 @@ def plot_kde_all_features(df_pair, feats, g1, g2, orig, out_dir):
 
 
 def plot_pairwise_ecdf(df_pair, feats, g1, g2, orig, out_dir):
-    """ECDF per feature, two groups. No binning, plots every point as a step."""
+    """ECDF per feature, two groups."""
     out_dir.mkdir(parents=True, exist_ok=True)
     colors = [group_color(g1, orig), group_color(g2, orig)]
     for feat in feats:
@@ -438,7 +436,7 @@ def plot_correlation_curv_vs_h1(df_pair, feats, g1, g2, orig, out_dir):
 
 
 def plot_threeway_violin_per_feature(df_three, three_classes, orig, feats, out_dir):
-    """Violin+box for three groups"""
+    """Violin+box for three groups."""
     colors = [group_color(g, orig) for g in three_classes]
     labels = [short_label(g, orig) for g in three_classes]
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -511,7 +509,7 @@ def plot_hist_threeway(df_three, three_classes, orig, feats, out_dir):
 
 
 def plot_curv_vs_pers_scatter_multi(df_three, three_classes, orig, out_path):
-    """Curvature vs persistence scatter for three groups."""
+    """Curvature vs persistence."""
     if "Curv_mean" not in df_three.columns or "H1_mean" not in df_three.columns: return
     fig, ax = plt.subplots(figsize=(6.5, 5.5))
     for g in three_classes:
@@ -544,10 +542,10 @@ def process_family(orig: str, homologs: list, df: pd.DataFrame):
     Produce three comparison folders per family:
       1. <orig>_vs_Unknotted_Homologs/
       2. <orig>_vs_KnotProt_Homologs/
-      3. <orig>_vs_Unknotted_vs_KnotProt/    three-group
+      3. <orig>_vs_Unknotted_vs_KnotProt/   
 
     Plots:
-      feature_distributions/   violin per feature (auto y-axis)
+      feature_distributions/   violin per feature 
       kde_plots/               KDE per feature
       correlation/             Curv_mean|median vs H1 features only
       curv_vs_pers_scatter.pdf
@@ -587,7 +585,7 @@ def process_family(orig: str, homologs: list, df: pd.DataFrame):
 
 def _plot_pair(g1: str, g2: str, orig: str, df_fam: pd.DataFrame,
                pair_dir: Path):
-    """All plots for one pairwise comparison (no stats)."""
+    """All plots for one pairwise comparison."""
     df_pair = df_fam[df_fam["Protein_Class"].isin([g1, g2])].copy()
     feats_p = avail_features(df_pair)
     plot_pairwise_violin_per_feature(df_pair, feats_p, g1, g2, orig,
@@ -608,7 +606,7 @@ def _plot_pair(g1: str, g2: str, orig: str, df_fam: pd.DataFrame,
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Script 1  Protein vs homolog analysis (plots only, no statistics)",
+        description="Script 1  Protein vs homolog analysis",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--class", dest="cls", default=None,
