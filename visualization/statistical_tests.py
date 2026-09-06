@@ -62,14 +62,12 @@ mpl.rcParams.update({
     "ps.fonttype":       42,
 })
 
-# ─────────────────────────────────────────────────────────────
-# CONFIG
-# ─────────────────────────────────────────────────────────────
+
+# Config
 FEATURES_CSV = None
 OUT_ROOT     = None
 DPI          = 200
 STATS_ONLY   = False
-THREE_WAY    = False   # set by --three-way flag
 
 def _resolve_paths():
     global FEATURES_CSV, OUT_ROOT
@@ -82,7 +80,7 @@ def _resolve_paths():
 FOCUS_FEATURES = ["Curv_median"]
 FEATURE_DISPLAY = {"Curv_median": "Median Curvature"}
 
-# Fixed pairs — Unknotted Homologs comparator for all four classes
+# Fixed pairs  Unknotted Homologs comparator for all four classes
 FIXED_PAIRS = {
     "K41":     {"unknotted": "K41_Unknotted_Homologs",
                 "knotprot":  "K41_KnotProt_Homologs"},
@@ -113,9 +111,8 @@ def savefig(fig, path: Path):
     plt.close(fig)
 
 
-# ─────────────────────────────────────────────────────────────
+
 # DATA LOADING
-# ─────────────────────────────────────────────────────────────
 
 def load_data() -> pd.DataFrame:
     if not FEATURES_CSV.exists():
@@ -148,9 +145,8 @@ def detect_pairs(df: pd.DataFrame) -> dict:
     return valid
 
 
-# ─────────────────────────────────────────────────────────────
+
 # STATISTICS
-# ─────────────────────────────────────────────────────────────
 
 def _ks_levene(a: np.ndarray, b: np.ndarray) -> dict:
     """Run KS + Levene on two arrays. Return raw p-values and stats."""
@@ -247,7 +243,7 @@ def run_three_group(df: pd.DataFrame, pairs: dict) -> pd.DataFrame:
                 **s,
             })
 
-            # ── KnotProt comparisons (if available) ──────────────────
+        
             if kp is not None:
                 c = df[df["Protein_Class"] == kp][feat].dropna().values
 
@@ -338,9 +334,7 @@ def apply_fdr(results_df: pd.DataFrame) -> pd.DataFrame:
                 return np.nan
             orig = row.get("original_class", "")
             hom  = row.get("homolog_class",  "")
-            # diff = median(original) - median(homolog); curvatures are negative,
-            # so "more negative" means the SMALLER median. diff > 0 therefore means
-            # the original is LESS negative and the homolog is the more-negative group.
+            
             if diff > 0.05:
                 return f"{hom}_more_negative"
             elif diff < -0.05:
@@ -350,10 +344,7 @@ def apply_fdr(results_df: pd.DataFrame) -> pd.DataFrame:
 
     return results_df
 
-
-# ─────────────────────────────────────────────────────────────
 # PLOTS
-# ─────────────────────────────────────────────────────────────
 
 def plot_violin(df: pd.DataFrame, pairs: dict, feat: str, out_dir: Path):
     """One violin+box per class, showing all available groups."""
@@ -482,9 +473,8 @@ def plot_boxplots(df: pd.DataFrame, pairs: dict, feat: str, out_dir: Path):
         savefig(fig, out_dir / f"{orig}_{feat}_boxplot.pdf")
 
 
-# ─────────────────────────────────────────────────────────────
+
 # SUMMARY REPORT
-# ─────────────────────────────────────────────────────────────
 
 def write_summary(results_df: pd.DataFrame, pairs: dict, out_path: Path):
     mode = "3-group (Original / Unknotted / KnotProt)" if THREE_WAY else "2-group (Original / Unknotted)"
@@ -535,9 +525,8 @@ def write_summary(results_df: pd.DataFrame, pairs: dict, out_path: Path):
     print(f"  Summary: {out_path}")
 
 
-# ─────────────────────────────────────────────────────────────
+
 # MAIN
-# ─────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(
@@ -577,7 +566,7 @@ def main():
         print(f"  {orig} → Unknotted: {g['unknotted']}{kp_str}")
     print()
 
-    # ── Run statistics ────────────────────────────────────────
+    #  Run statistics 
     if THREE_WAY:
         results_df = run_three_group(df, pairs)
     else:
@@ -589,7 +578,7 @@ def main():
 
     results_df = apply_fdr(results_df)
 
-    # ── Save CSVs ─────────────────────────────────────────────
+    #  Save CSVs 
     results_df.to_csv(OUT_ROOT / "comparison_results.csv", index=False)
     print(f"Main results: {OUT_ROOT / 'comparison_results.csv'}")
 
@@ -602,7 +591,7 @@ def main():
 
     write_summary(results_df, pairs, OUT_ROOT / "summary_report.txt")
 
-    # ── Plots ─────────────────────────────────────────────────
+    #  Plots 
     if not STATS_ONLY:
         plots_dir = OUT_ROOT / "plots"
         plots_dir.mkdir(parents=True, exist_ok=True)
