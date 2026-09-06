@@ -13,8 +13,8 @@ Output layout:
   results/comparison/<OriginalClass>/
     <Original>_vs_Unknotted_Homologs/
         feature_distributions/    violin per feature, auto y-axis
-        kde_plots/                smoothed density (kept)
-        hist_plots/               un-smoothed histograms (shared bins) — added
+        kde_plots/                smoothed density
+        hist_plots/               un-smoothed histograms (shared bins) 
         correlation/              Curv_mean|median vs H1 features only
         curv_vs_pers_scatter.pdf
 
@@ -23,11 +23,11 @@ Output layout:
 
     <Original>_vs_Unknotted_vs_KnotProt/
         feature_distributions/
-        kde_plots/                smoothed density (kept)
-        hist_plots/               un-smoothed histograms (shared bins) — added
+        kde_plots/                smoothed density
+        hist_plots/               un-smoothed histograms (shared bins) 
         curv_vs_pers_scatter.pdf
 
-No statistics. No overview folder. No PDB_Homologs.
+
 
 Usage:
   python analysis_proteins_vs_homologs.py
@@ -76,7 +76,7 @@ mpl.rcParams.update({
     "ps.fonttype":        42,
 })
 
-# Single font-size constants  change here, takes effect everywhere
+
 FS       = 11   # axis labels, tick labels
 FS_TITLE = 11   # plot titles
 FS_LEG   = 10   # legends
@@ -258,7 +258,7 @@ def plot_pairwise_violin_per_feature(df_pair, feats, g1, g2, orig, out_dir):
         d2 = df_pair[df_pair["Protein_Class"]==g2][feat].dropna().values
         if not (len(d1) and len(d2)): continue
         fig, ax = plt.subplots(figsize=(5, 5.5))
-        # auto y-axis via _violin_box_ax with no ylim_override
+       
         _violin_box_ax(ax, [d1, d2], colors, labels)
         ax.set_ylabel(FEATURE_DISPLAY.get(feat, feat), fontsize=FS)
         ax.set_title(f"{FEATURE_DISPLAY.get(feat,feat)}\n"
@@ -297,7 +297,7 @@ def plot_curv_vs_pers_scatter(df_pair, g1, g2, orig, out_path):
 def _shared_bins(value_arrays, max_bins=30):
     """
     Compute a common set of histogram bin edges across several groups so the
-    two/three populations are binned identically and can be compared fairly.
+    populations are binned identically and can be compared fairly.
     Uses the Freedman-Diaconis rule on the pooled data, clamped to a sensible
     number of bins.
     """
@@ -438,7 +438,7 @@ def plot_correlation_curv_vs_h1(df_pair, feats, g1, g2, orig, out_dir):
 
 
 def plot_threeway_violin_per_feature(df_three, three_classes, orig, feats, out_dir):
-    """Violin+box for three groups, auto y-axis, no stat brackets."""
+    """Violin+box for three groups"""
     colors = [group_color(g, orig) for g in three_classes]
     labels = [short_label(g, orig) for g in three_classes]
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -546,7 +546,6 @@ def process_family(orig: str, homologs: list, df: pd.DataFrame):
       2. <orig>_vs_KnotProt_Homologs/
       3. <orig>_vs_Unknotted_vs_KnotProt/    three-group
 
-    No statistics are run here. No overview folder.
     Plots:
       feature_distributions/   violin per feature (auto y-axis)
       kde_plots/               KDE per feature
