@@ -17,8 +17,8 @@ Steps
         Output: results/features/protein_features.csv
         Task  : 19 numerical features per protein, parallelised
 
-  v2b extract_topological_features.py  [NEW — run after v2]
-        Input : barcodes JSON + Cα coordinate CSVs
+  v2b extract_topological_features.py  [NEW  run after v2]
+        Input : barcodes JSON + C-alpha coordinate CSVs
         Output: results/features/protein_features_extended.csv
         Task  : writhe, persistence entropy, persistent image PCA
                 (better descriptors for knotting than Ricci curvature)
@@ -64,7 +64,7 @@ Usage
   # Show pipeline status:
   python run_visualizations.py --status
 
-  ── v1 (visualize_ph.py) specific options ──────────────────────────
+   v1 (visualize_ph.py) specific options 
   # Only barcode plots, all classes:
   python run_visualizations.py --step v1 --plots barcodes
 
@@ -74,11 +74,11 @@ Usage
   # All plots for classes starting with 'k':
   python run_visualizations.py --step v1 --group k
 
-  ── v3 (statistical_analysis.py) specific options ──────────────────
+   v3 (statistical_analysis.py) specific options 
   # Single class only:
   python run_visualizations.py --step v3 --classes AOTCases
 
-  ── v4 (compare_classes.py) specific options ───────────────────────
+   v4 (compare_classes.py) specific options 
   # Only KDE and violin plots:
   python run_visualizations.py --step v4 --plots kde violin_boxplot
 
@@ -88,8 +88,8 @@ Usage
   # Specific classes + specific plots + group-split:
   python run_visualizations.py --step v4 --classes AOTCases OTCases --plots kde scatter --group-split
 
-  ── Notes ───────────────────────────────────────────────────────────
-  --plots   applies to v1 and v4 (different valid values per step — see below)
+   Notes 
+  --plots   applies to v1 and v4 (different valid values per step  see below)
   --classes applies to v1, v3, and v4
   --group   applies to v1 only  (k or s)
   --group-split  applies to v4 only
@@ -108,20 +108,14 @@ sys.path.append(str(Path(__file__).parent))
 from config import config
 
 
-# ================================================================
+
 # PLOT CHOICES (for validation)
-# ================================================================
 V1_PLOTS = {"persistent_diagram", "barcodes", "most_persistent_cycle"}
 V4_PLOTS = {"kde", "violin_boxplot", "scatter", "volcano", "overview"}
 
-
-# ================================================================
-# HELPERS FOR STEP REGISTRY
-# ================================================================
-
-# ================================================================
+ 
+# HELPERS FOR STEP REGISTRY 
 # STEP REGISTRY
-# ================================================================
 STEPS = {
 
     "v1": {
@@ -234,7 +228,7 @@ STEPS = {
 
     "v6": {
         "script":      "wasserstein_analysis.py",
-        "description": "Wasserstein persistence diagram distances (slow — O(n²))",
+        "description": "Wasserstein persistence diagram distances (slow  O(n²))",
         "depends_on":  ["v2"],
         "input_check": {
             "type": "file",
@@ -362,9 +356,9 @@ STEPS = {
 RUN_ORDER = ["v1", "v2", "v2b", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12"]
 
 
-# ================================================================
+# 
 # HELPERS
-# ================================================================
+# 
 
 def _is_done(sid):
     spec = STEPS[sid]["done_check"]
@@ -453,9 +447,9 @@ def _build_extra_args(sid, args):
     return extra or None
 
 
-# ================================================================
+# 
 # EXECUTION
-# ================================================================
+# 
 
 def _run_step(sid, force=False, extra_args=None):
     spec = STEPS[sid]
@@ -568,9 +562,9 @@ def run_all(force=False):
     return True
 
 
-# ================================================================
+# 
 # STATUS / DISPLAY
-# ================================================================
+# 
 
 def _print_plan():
     print("  {:<6}  {:<34}  Status".format("Step", "Script"))
@@ -747,9 +741,9 @@ Dependency tree:
     print("=" * 65)
 
 
-# ================================================================
+# 
 # ENTRY POINT
-# ================================================================
+# 
 
 def main():
     parser = argparse.ArgumentParser(
