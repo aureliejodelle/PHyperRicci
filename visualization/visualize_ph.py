@@ -7,7 +7,7 @@ PDF figures for each protein:
 
   1. Persistence diagram     (H0 + H1 scatter on birth/death axes)
   2. Barcode diagram         (H0 + H1 horizontal bars)
-  3. Most persistent cycle   (3D Cα backbone + cycle edges overlay)
+  3. Most persistent cycle   (3D C-alpha backbone + cycle edges overlay)
 
 Inputs:
   - processed_data/Persistent_homology/<class>/barcodes/<protein>.json
@@ -66,9 +66,9 @@ from tqdm import tqdm
 sys.path.append(str(Path(__file__).resolve().parent.parent / "pipeline"))
 from config import config, add_dataset_arg, apply_dataset_from_args
 
-# ============================================================
+
 # CONFIG
-# ============================================================
+
 NUM_WORKERS  = 8     # threads — matplotlib Agg is thread-safe
 DPI          = 150   # resolution for rasterized elements inside PDF
 
@@ -81,17 +81,17 @@ PLOT_KEY_MAP = {
 ALL_PLOTS = list(PLOT_KEY_MAP.keys())
 
 # Colour palette
-C_H0    = "#4878CF"   # steel blue  — H0
-C_H1    = "#D65F5F"   # crimson     — H1
-C_DIAG  = "#888888"   # grey        — diagonal
-C_BACK  = "#AECDE8"   # light blue  — backbone atoms
-C_CYCLE = "#D65F5F"   # crimson     — cycle edges
-C_NODE  = "#B22222"   # dark red    — cycle nodes
+C_H0    = "#4878CF"   # steel blue 
+C_H1    = "#D65F5F"   # crimson 
+C_DIAG  = "#888888"   # grey
+C_BACK  = "#AECDE8"   # light blue
+C_CYCLE = "#D65F5F"   # crimson 
+C_NODE  = "#B22222"   # dark red 
 
 
-# ============================================================
+
 # CLI
-# ============================================================
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -129,9 +129,9 @@ def parse_args():
     return parser.parse_args()
 
 
-# ============================================================
+
 # DATA LOADING
-# ============================================================
+
 
 def load_barcodes(barcode_json: Path) -> Tuple[List, List]:
     """Return (bar0, bar1) — lists of [birth, death_or_None]."""
@@ -150,9 +150,9 @@ def load_coords(csv_path: Path) -> np.ndarray:
     return pd.read_csv(csv_path, header=0).values.astype(float)
 
 
-# ============================================================
+
 # PLOT 1: PERSISTENCE DIAGRAM
-# ============================================================
+
 
 def plot_persistence_diagram(
     bar0: List, bar1: List, protein_id: str, out_path: Path
@@ -208,9 +208,9 @@ def plot_persistence_diagram(
     plt.close(fig)
 
 
-# ============================================================
+
 # PLOT 2: BARCODE DIAGRAM
-# ============================================================
+
 
 def plot_barcodes(
     bar0: List, bar1: List, protein_id: str, out_path: Path
@@ -281,9 +281,9 @@ def plot_barcodes(
     plt.close(fig)
 
 
-# ============================================================
+
 # PLOT 3: MOST PERSISTENT CYCLE (3D)
-# ============================================================
+
 
 def plot_most_persistent_cycle(
     ph1_data: Dict, coords: np.ndarray, protein_id: str, out_path: Path
@@ -352,9 +352,9 @@ def plot_most_persistent_cycle(
     return True
 
 
-# ============================================================
+
 # PROCESS ONE PROTEIN
-# ============================================================
+
 
 def visualize_protein(
     protein_id: str,
@@ -399,9 +399,9 @@ def visualize_protein(
         return {"protein_id": protein_id, "status": "failed", "error": str(e)}
 
 
-# ============================================================
+
 # PROCESS ONE CLASS
-# ============================================================
+
 
 def visualize_class(class_name: str, plots: List[str]) -> Dict:
     barcode_dir = config.PH_DIR / class_name / "barcodes"
@@ -454,18 +454,18 @@ def visualize_class(class_name: str, plots: List[str]) -> Dict:
     return stats
 
 
-# ============================================================
+
 # MAIN
-# ============================================================
+
 
 def main():
     args = parse_args()
     apply_dataset_from_args(args)
 
-    # ── resolve which plots to run ──────────────────────────
+    #  resolve which plots to run 
     plots = args.plots  # already validated by argparse
 
-    # ── discover available classes ──────────────────────────
+    #  discover available classes 
     if not config.PH_DIR.exists():
         print(f"❌ PH directory not found: {config.PH_DIR}")
         print("   Run step 4 first.")
@@ -480,7 +480,7 @@ def main():
         print(f"❌ No processed classes found in {config.PH_DIR}")
         sys.exit(1)
 
-    # ── filter classes ──────────────────────────────────────
+    #  filter classes 
     if args.classes:
         # explicit list takes priority
         missing = [c for c in args.classes if c not in all_classes]
@@ -499,7 +499,7 @@ def main():
         print("❌ No classes to process after filtering.")
         sys.exit(1)
 
-    # ── banner ──────────────────────────────────────────────
+    #  banner 
     print("=" * 60)
     print("SCRIPT 7: PH VISUALIZATIONS")
     print("=" * 60)
