@@ -43,9 +43,9 @@ warnings.filterwarnings("ignore")
 sys.path.append(str(Path(__file__).resolve().parent.parent / "pipeline"))
 from config import config
 
-# ─────────────────────────────────────────────────────────────
+
 # CONSTANTS
-# ─────────────────────────────────────────────────────────────
+
 FEATURES_CSV        = config.VIZ_FEATURES_DIR / "protein_features.csv"
 FEATURES_NO_OL_CSV  = config.VIZ_FEATURES_DIR / "protein_features_no_outliers.csv"
 NUM_WORKERS  = 8
@@ -83,9 +83,9 @@ FEATURE_DISPLAY = {
     "HG_density":      "HG Density",
 }
 
-# ─────────────────────────────────────────────────────────────
+
 # FEATURE LOADERS
-# ─────────────────────────────────────────────────────────────
+
 
 def load_persistence(class_name: str, protein_id: str) -> dict:
     path = config.PH_DIR / class_name / "barcodes" / f"{protein_id}.json"
@@ -185,9 +185,9 @@ def load_hypergraph(class_name: str, protein_id: str) -> dict:
     return out
 
 
-# ─────────────────────────────────────────────────────────────
+
 # OUTLIER REMOVAL
-# ─────────────────────────────────────────────────────────────
+
 
 def iqr_filter(values: np.ndarray) -> np.ndarray:
     """
@@ -275,9 +275,9 @@ def persistence_features_from_array(arr: np.ndarray) -> dict:
     return out
 
 
-# ─────────────────────────────────────────────────────────────
+
 # PROCESS ONE PROTEIN — both raw and outlier-removed
-# ─────────────────────────────────────────────────────────────
+
 
 def process_protein(class_name: str, protein_id: str) -> dict:
     """
@@ -326,9 +326,9 @@ def collect_proteins() -> list:
     return pairs
 
 
-# ─────────────────────────────────────────────────────────────
+
 # MAIN
-# ─────────────────────────────────────────────────────────────
+
 
 def main():
     print("=" * 60)
@@ -369,14 +369,14 @@ def main():
                 rows_no_ol.append(result["no_outliers"])
                 pbar.update(1)
 
-    # ── Save raw CSV (original behaviour) ────────────────────────────
+    #  Save raw CSV (original behaviour) 
     ordered_cols = ["Protein_Class", "Protein_ID"] +                    [c for c in FEATURE_COLS if c in rows_raw[0]]
     df_raw = pd.DataFrame(rows_raw)
     df_raw = df_raw[[c for c in ordered_cols if c in df_raw.columns]]
     df_raw.to_csv(FEATURES_CSV, index=False)
     print(f"\nSaved {len(df_raw)} rows → {FEATURES_CSV}")
 
-    # ── Save outlier-removed CSV ──────────────────────────────────────
+    #  Save outlier-removed CSV 
     extra_cols = ["Curv_n_outliers_removed", "Pers_n_outliers_removed"]
     ordered_no_ol = ordered_cols + [c for c in extra_cols if c in rows_no_ol[0]]
     df_no_ol = pd.DataFrame(rows_no_ol)
@@ -384,7 +384,7 @@ def main():
     df_no_ol.to_csv(FEATURES_NO_OL_CSV, index=False)
     print(f"Saved {len(df_no_ol)} rows → {FEATURES_NO_OL_CSV}")
 
-    # ── Feature coverage table ────────────────────────────────────────
+    #  Feature coverage table 
     print("\nFeature coverage  [raw | no_outliers] (non-NaN %):")
     for col in FEATURE_COLS:
         if col in df_raw.columns:
@@ -395,7 +395,7 @@ def main():
             bar_r   = "█" * int(pct_r/5) + "░" * (20-int(pct_r/5))
             print(f"  {col:<25} raw |{bar_r}| {pct_r:.0f}%   no_ol {pct_n:.0f}%")
 
-    # ── Outlier removal summary ───────────────────────────────────────
+    #  Outlier removal summary 
     if "Curv_n_outliers_removed" in df_no_ol.columns:
         mean_co = df_no_ol["Curv_n_outliers_removed"].mean()
         mean_po = df_no_ol["Pers_n_outliers_removed"].mean()
