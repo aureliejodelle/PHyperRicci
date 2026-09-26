@@ -2,7 +2,7 @@
 
 PHyperRicci is a geometric-topological framework for analysing the structural complexity of knotted proteins. It combines three complementary descriptors:
 
-- Persistent homology (PH) Vietoris-Rips filtration on Cα coordinates (H0 components, H1 cycles)
+- Persistent homology (PH) Vietoris-Rips filtration on C-alpha coordinates (H0 components, H1 cycles)
 - Hypergraph structure: each H1 cycle representative forms a hyperedge connecting its Cα atoms
 - Forman-Ricci curvature: discrete curvature on hyperedges, capturing local geometric roughness
 
