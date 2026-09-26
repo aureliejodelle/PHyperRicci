@@ -9,4 +9,3 @@ Statistical analysis scripts for distributional tests across knot classes.
 - Persistent homology barcode statistics (mean/median/max persistence, H1 count)
 - Forman-Ricci curvature distribution tests
 - Feature correlation analysis (Spearman)
-- PHypeRicci distributional significance results (Paper 1)
