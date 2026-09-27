@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
 """
 Script 3: Download Structures and Extract CA Coordinates
---------------------------------------------------------
 Reads similar_chains_simple.csv and downloads ALL proteins:
 - Original proteins (from the rows themselves)
 - All homologous proteins grouped by source class × similarity type
@@ -38,7 +36,7 @@ def get_selected_classes():
 
 # CONFIG
 
-NUM_WORKERS   = 10    # Parallel threads — safe for RCSB
+NUM_WORKERS   = 10    # Parallel threads
 REQUEST_DELAY = 0.05  # Seconds between requests per thread
 TIMEOUT       = 30    # HTTP timeout
 
@@ -184,7 +182,6 @@ class ProteinDownloader:
         with self._lock:
             self.stats[key] += n
 
-    # ------------------------------------------------------------------
     def download_one(self, protein_id: str, chain: str, output_file: Path) -> Tuple[str, int]:
         """
         Download protein → try PDB → fallback to mmCIF → save CA coords as CSV.
@@ -205,7 +202,6 @@ class ProteinDownloader:
         ca      = []
         got_response = False
 
-        # ---1. Try PDB format -------------------------------------------------------------
         try:
             r = sess.get(f"https://files.rcsb.org/download/{pid.lower()}.pdb", timeout=TIMEOUT)
             if r.status_code == 200 and r.text.strip():
@@ -218,7 +214,6 @@ class ProteinDownloader:
         except Exception:
             pass
 
-        # --- 2. Fallback: mmCIF (handles large / newer structures) ---------------
         if not ca:
             try:
                 r = sess.get(f"https://files.rcsb.org/download/{pid.lower()}.cif", timeout=TIMEOUT)
@@ -243,7 +238,7 @@ class ProteinDownloader:
         self._bump("total_atoms", len(ca))
         return "downloaded", len(ca)
 
-    # ------------------------------------------------------------------
+    
     def download_category(self, protein_list: List[str], category_name: str, base_dir: Path):
         if not protein_list:
             return
@@ -274,7 +269,7 @@ class ProteinDownloader:
                     try:
                         f.result()
                     except Exception as e:
-                        tqdm.write(f"    ⚠ worker error: {e}")
+                        tqdm.write(f"    worker error: {e}")
                     pbar.update(1)
                     with cat_lock:
                         pbar.set_postfix(
@@ -293,7 +288,6 @@ class ProteinDownloader:
             self.stats["by_category"][category_name] = cat
             self.stats["total"] += len(protein_list)
 
-    # ------------------------------------------------------------------
     def print_summary(self):
         print("\n" + "=" * 60)
         print(" DOWNLOAD SUMMARY")
@@ -338,7 +332,7 @@ def main():
 
     dl = ProteinDownloader()
 
-    # --- PART 1: Original proteins grouped by class -----------------------------
+    # PART 1: Original proteins grouped by class 
     print("=" * 50)
     print("PART 1: ORIGINAL PROTEINS (by class)")
     print("=" * 50)
@@ -346,7 +340,7 @@ def main():
         protein_list = df[df["class"] == cls]["protein_id_chain"].tolist()
         dl.download_category(protein_list, cls, config.COORDINATES_DIR)
 
-    # --- PART 2: Homologs grouped by source class × similarity type ----
+    # PART 2: Homologs grouped by source class × similarity type 
     print("\n" + "=" * 50)
     print("PART 2: HOMOLOGS BY CLASS * SIMILARITY TYPE")
     print("=" * 50)
