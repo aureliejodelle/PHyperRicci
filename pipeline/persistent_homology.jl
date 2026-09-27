@@ -2,10 +2,8 @@ using Ripserer, DelimitedFiles, DataFrames, CSV, JSON, Logging
 using Base.Threads: @threads, nthreads
 using OrderedCollections
 
-# PATHS  (all relative to this script's location)
 
 # PATHS  - read from environment variables set by run_pipeline.py
-#          so that config.py is the single source of truth.
 # Fallback values match the config.py defaults.
 # 
 const SCRIPT_DIR  = @__DIR__
@@ -25,7 +23,7 @@ const DIR_BARCODES = "barcodes"
 
 """
 Convert PH barcodes for a given dimension into a plain
-Vector{Vector{Union{Float64,Nothing}}} — fully JSON-serializable.
+Vector{Vector{Union{Float64,Nothing}}} - fully JSON-serializable.
 Infinite deaths become JSON null (nothing).
 """
 function barcodes(PH, dim::Int)
@@ -41,7 +39,7 @@ end
 
 """
 Extract simplex representatives as plain Vector{Vector{Vector{Int}}}.
-No Ripserer wrapper types - safe for JSON serialization.
+No Ripserer wrapper types.
 """
 function representatives(PH, dim::Int)
     [
@@ -77,7 +75,7 @@ function detect_classes()::Vector{String}
         error("Input root not found: $INPUT_ROOT")
     end
     all_dirs = filter(d -> isdir(joinpath(INPUT_ROOT, d)), readdir(INPUT_ROOT))
-    # Exclude hidden folders (e.g. .ipynb_checkpoints) and system folders
+    # Exclude hidden folders
     classes = filter(d -> !startswith(d, "."), all_dirs)
     isempty(classes) && @warn "No subdirectories found in $INPUT_ROOT"
     @info "Detected $(length(classes)) class(es): $(join(classes, ", "))"
@@ -90,12 +88,11 @@ end
 
 """
 Compute persistent homology for one protein and save JSON outputs.
-No plotting - fully thread-safe.
 """
 function process_protein(input_file::String, class_name::String, dirs)::Bool
     protein_id = splitext(basename(input_file))[1]
 
-    # ---Skip if all three outputs already exist ----------------------------
+    # Skip if all three outputs already exist 
     out_ph   = joinpath(dirs.ph,       "$protein_id.json")
     out_reps = joinpath(dirs.reps,     "$protein_id.json")
     out_bars = joinpath(dirs.barcodes, "$protein_id.json")
@@ -105,10 +102,10 @@ function process_protein(input_file::String, class_name::String, dirs)::Bool
     end
 
     try
-        # Load Cα coordinates
+        # Load C-alpha coordinates
         grid = Matrix{Float64}(CSV.read(input_file, DataFrame)) |> eachrow .|> Tuple
 
-        # Compute PH — reps=true gives minimal representatives via column reduction
+        # Compute PH - reps=true gives minimal representatives via column reduction
         PH = ripserer(grid; dim_max=1, alg=:involuted)
 
         # Extract serializable data
@@ -127,12 +124,12 @@ function process_protein(input_file::String, class_name::String, dirs)::Bool
             ), 2)
         end
 
-        # representatives: cycles only (input for hypergraph step)
+        # representatives: cycles
         open(joinpath(dirs.reps, "$protein_id.json"), "w") do io
             JSON.print(io, OrderedDict(:representatives => repre), 2)
         end
 
-        # barcodes: birth/death pairs only (input for visualization step)
+        # barcodes: birth/death pairs 
         open(joinpath(dirs.barcodes, "$protein_id.json"), "w") do io
             JSON.print(io, OrderedDict(:dim_0 => bar0, :dim_1 => bar1), 2)
         end
@@ -151,7 +148,7 @@ function process_protein(input_file::String, class_name::String, dirs)::Bool
 end
 
 
-# PROCESS ONE CLASS - fully parallel, no lock needed
+# PROCESS ONE CLASS - fully parallel
 
 
 function process_class(class_name::String)
@@ -178,7 +175,7 @@ function process_class(class_name::String)
     success_count = Threads.Atomic{Int}(0)
     fail_count    = Threads.Atomic{Int}(0)
 
-    # Fully parallel — no plot_lock needed
+    # Fully parallel
     @threads for file in csv_files
         ok = process_protein(file, class_name, dirs)
         Threads.atomic_add!(ok ? success_count : fail_count, 1)
