@@ -1,6 +1,6 @@
 """
 config.py
-=========
+
 Single shared configuration for the PHyperRicci pipeline.
 Used by both pipeline/ (computation) and visualization/ scripts.
 
