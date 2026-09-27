@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
 """
 Step 5: Compute Forman-Ricci Curvature
----------------------------------------
+
 Computes the raw Forman-Ricci curvature for each hyperedge in each
 protein's hypergraph.
 
 Measure
--------
+
   F(e) = 2|e| - D
 
 where |e| = hyperedge size (number of nodes),
@@ -51,7 +50,7 @@ NUM_WORKERS = 8
 
 
 
-# HELPERS: rebuild incidence matrix from hyperedge map
+# Rebuild incidence matrix from hyperedge map
 
 
 def load_hyperedge_map(hg_json: Path) -> Dict[int, List[int]]:
@@ -89,7 +88,7 @@ def build_incidence_matrix(
 
 
 
-# CORE: Forman-Ricci curvature
+# Forman-Ricci curvature
 
 
 def compute_curvature(
@@ -126,7 +125,7 @@ def process_protein(
     """
     out_file = out_dir / f"{protein_id}.json"
 
-    # ---Skip if already done --------------------------------------
+    # Skip if already done 
     if out_file.exists():
         return {"protein_id": protein_id, "status": "skipped", "n_hyperedges": 0}
 
