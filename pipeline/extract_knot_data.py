@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script 2: Extract Knot Core Data
---------------------------------
+
 For all trefoil proteins, extracts:
 - Full chain sequence
 - Knot core range and sequence
@@ -120,11 +120,8 @@ class KnotDataExtractor:
     
     def _extract_sequence(self, soup: BeautifulSoup) -> str:
         """Extract protein sequence from the page.
-        Uses the same strategy as script 9 which was confirmed working:
-        longest match first, then pre tags, then sequence div.
         """
-        # Strategy 1 (from script 9): scan full page text for longest
-        # amino-acid string — most reliable across different page layouts
+        
         text = soup.get_text()
         sequences = re.findall(r'[ACDEFGHIKLMNPQRSTVWY\-]{30,}', text)
         if sequences:
@@ -266,7 +263,7 @@ def main():
     output_file = config.get_knot_data_path()
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    # Check how many already done (resume support)
+    # Check how many already done
     already_done = set()
     if output_file.exists():
         try:
@@ -276,7 +273,7 @@ def main():
         except Exception:
             already_done = set()
 
-    # Open CSV in append mode so each row is written immediately
+    # Write each row immediately
     write_header = not output_file.exists() or len(already_done) == 0
     csv_file = open(output_file, "a", newline="", encoding="utf-8")
     import csv as csv_mod
