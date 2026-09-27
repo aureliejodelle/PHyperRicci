@@ -136,13 +136,13 @@ def extract_similar_chains(protein_id, chain, attempt=0):
             pass
 
         # Wait for "loading similar chains, please wait" to disappear
-        # This is the main wait — no fixed sleep needed
+        # This is the main wait 
         try:
             WebDriverWait(driver, PAGE_TIMEOUT).until(
                 lambda d: "loading similar chains, please wait" not in d.page_source.lower()
             )
         except:
-            # Timed out — page may still have partial data, continue anyway
+            # Timed out - page may still have partial data, continue anyway
             pass
 
         # Force-expand the rawdata collapse div so innerText is populated
@@ -160,7 +160,7 @@ def extract_similar_chains(protein_id, chain, attempt=0):
         }
 
         for span_id, category in span_map.items():
-            # Use textContent (always available) rather than innerText (requires visibility)
+            # Use textContent 
             text = driver.execute_script(
                 f"var el = document.getElementById('{span_id}'); return el ? el.textContent : '';"
             )
@@ -263,7 +263,7 @@ _existing_df = None
 if selected and os.path.exists(output_file):
     try:
         _existing_df = pd.read_csv(output_file)
-        # Remove rows for classes we're re-fetching (will be replaced)
+        # Remove rows for classes we're re-fetching 
         _existing_df = _existing_df[~_existing_df["class"].isin(selected)]
         print(f"\n Will merge results with existing {output_file}")
     except Exception:
@@ -327,11 +327,9 @@ try:
 finally:
     out_f.close()
     # Cleanly quit all thread-local drivers
-    # (ThreadPoolExecutor threads are still alive briefly - quit via a final sweep)
     for t in threading.enumerate():
         if hasattr(t, "_target"):
             pass
-    # Best-effort quit
     try:
         quit_driver()
     except:

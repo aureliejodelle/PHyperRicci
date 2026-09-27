@@ -1,6 +1,5 @@
 """
 Script 1a: Fetch Protein IDs Only
----------------------------------
 Fetches all protein IDs from KnotProt and PDB.
 Output: CSV with columns: protein_id | chain | class
 """
@@ -66,8 +65,6 @@ class ProteinIDFetcher:
                 # Strategy 1: parse the raw data <pre> block
                 # The page contains a block like:
                 #   6ymb|A||S|+3.1;
-                #   6ufd|A||S|+3.1;
-                # This is the most reliable source - one entry per protein,
                 # no duplicates from repeated table links.
                 page_proteins = []
                 pre_tags = soup.find_all("pre")
@@ -86,7 +83,6 @@ class ProteinIDFetcher:
                                     page_proteins.append(key)
 
                 # Strategy 2: fallback to /view/ links 
-                # Only used if the raw block was empty.
                 if not page_proteins:
                     view_links = soup.find_all("a", href=re.compile(r"^/view/"))
                     for link in view_links:

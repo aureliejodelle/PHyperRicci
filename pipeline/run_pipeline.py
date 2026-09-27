@@ -1,8 +1,8 @@
 """
 run_pipeline.py - Modular Protein Knot Analysis Pipeline
-----------------------------------------------------------------------------------
+
 Steps
------
+
   1a   Fetch protein IDs from KnotProt / RCSB         (Python, ~2-3 min)
   1b   Fetch similar chains via Selenium               (Python, ~20-30 min)
   2    Extract knot core ranges and sequences          (Python, ~5-10 min)
@@ -13,7 +13,7 @@ Steps
   6    Compute Forman-Ricci curvature                  (Python, ~5-10 min)
 
 Usage
------
+
   python run_pipeline.py                          # Full pipeline (1a -- 6)
   python run_pipeline.py --step 4                # One step (auto-resolves deps)
   python run_pipeline.py --steps 5 6             # Multiple specific steps
@@ -42,17 +42,11 @@ sys.path.append(str(Path(__file__).parent))
 from config import config
 
 
-# -------------------------------------------------------------
-# HELPER — readable by child scripts via env var
-# -------------------------------------------------------------------
 
 def get_selected_classes() -> Optional[List[str]]:
     """
     Read the PIPELINE_CLASSES env var set by this script.
     Returns a list of class names, or None (= all classes).
-
-    Child scripts import this so all class-filtering goes through
-    a single mechanism — the env var is the authoritative filter.
 
         from run_pipeline import get_selected_classes
         classes = get_selected_classes() or list(config.KNOT_TYPES.keys())
@@ -61,9 +55,8 @@ def get_selected_classes() -> Optional[List[str]]:
     return [c.strip() for c in raw.split(",") if c.strip()] if raw else None
 
 
-# -------------------------------------------------------------------
+
 # JULIA DETECTION
-# ------------------------------------------------------------------
 
 def find_julia() -> Optional[str]:
     julia = shutil.which("julia")
@@ -81,10 +74,7 @@ def find_julia() -> Optional[str]:
 
 JULIA_BIN = find_julia()
 
-
-# ------------------------------------------------------------------
 # STEP REGISTRY
-# --------------------------------------------------------------------
 
 STEPS: dict = {
     "1a": {
@@ -174,16 +164,15 @@ STEPS: dict = {
     },
 }
 
-# Ordered list for full-pipeline execution (3b excluded — run on demand only)
+# Ordered list for full-pipeline execution (3b excluded - run on demand only)
 PIPELINE_ORDER = ["1a", "1b", "2", "3", "4", "5", "6"]
 
 # Steps where --classes filtering applies
 CLASSES_AWARE = {"1a", "1b", "2", "3", "4", "5", "6"}
 
 
-# ------------------------------------------------------------------
+
 # PIPELINE RUNNER
-# -------------------------------------------------------------------------
 
 class PipelineRunner:
 
@@ -193,9 +182,7 @@ class PipelineRunner:
         self.logs_dir.mkdir(parents=True, exist_ok=True)
         self.dry_run     = dry_run
 
-    # ----------------------------------------------------------
     # STATUS HELPERS
-    # ----------------------------------------------------------
 
     def _count_outputs(self, step: str) -> int:
         """Count files matching each step's output_glob across all required_outputs."""
@@ -246,9 +233,9 @@ class PipelineRunner:
             print(f"  [OK] Step {dep} completed.")
         return True
 
-    # ----------------------------------------------------------
+ 
     # EXECUTION
-    # ----------------------------------------------------------
+
 
     def run_step(
         self,
@@ -391,9 +378,9 @@ class PipelineRunner:
             print(f"\n  [ERROR] Unexpected error in step {step}: {e}")
             return False
 
-    # ----------------------------------------------------------
+    
     # FULL PIPELINE
-    # ----------------------------------------------------------
+
 
     def run_all(self, force: bool = False, parallel: bool = True) -> bool:
         """
@@ -409,14 +396,14 @@ class PipelineRunner:
         if not parallel:
             print("  Parallelism: disabled (--no-parallel)")
 
-        # --- Phase 1: Protein IDs -------------------------------------------------
+        # Phase 1: Protein IDs 
         self._phase_header("1", "Fetch Protein IDs")
         if self.check_step_done("1a") and not force:
             print("  Step 1a already done, skipping.")
         elif not self._execute_step("1a", force):
             return False
 
-        # --- Phase 2: Similar Chains + Knot Data (parallel) ------------------------
+        # Phase 2: Similar Chains + Knot Data (parallel) 
         self._phase_header("2", "Similar Chains & Knot Core Data")
         steps_to_run = [s for s in ("1b", "2") if force or not self.check_step_done(s)]
         for s in ("1b", "2"):
@@ -433,7 +420,7 @@ class PipelineRunner:
             if not ok:
                 return False
 
-        # --- Phase 3: Download Structures --------------------------------------------
+        # Phase 3: Download Structures 
         self._phase_header("3", "Download Structures")
         if self.check_step_done("3") and not force:
             n = self._count_outputs("3")
@@ -441,7 +428,7 @@ class PipelineRunner:
         elif not self._execute_step("3", force):
             return False
 
-        # --- Phase 4: Persistent Homology (Julia) ------------------------------------
+        # Phase 4: Persistent Homology (Julia) 
         self._phase_header("4", "Persistent Homology (Julia)")
         if self.check_step_done("4") and not force:
             n = self._count_outputs("4")
@@ -449,7 +436,7 @@ class PipelineRunner:
         elif not self._execute_step("4", force):
             return False
 
-        # --- Phase 5: Hypergraphs ----------------------------------------
+        # Phase 5: Hypergraphs 
         self._phase_header("5", "Hypergraph Computation")
         if self.check_step_done("5") and not force:
             n = self._count_outputs("5")
@@ -457,7 +444,7 @@ class PipelineRunner:
         elif not self._execute_step("5", force):
             return False
 
-        # --- Phase 6: Forman-Ricci Curvature ----------------------------------
+        # Phase 6: Forman-Ricci Curvature 
         self._phase_header("6", "Forman-Ricci Curvature")
         if self.check_step_done("6") and not force:
             n = self._count_outputs("6")
@@ -502,9 +489,9 @@ class PipelineRunner:
             print(f"\n  [FAIL] Steps failed: {', '.join(failed)}")
         return not failed
 
-    # ----------------------------------------------------------
+   
     # STATUS DISPLAY
-    # ----------------------------------------------------------
+
 
     def print_status(self):
         print("\n" + "=" * 68)
@@ -564,10 +551,7 @@ class PipelineRunner:
             print(f"  {label:<30}  {cmd}")
         print()
 
-
-# ----------------------------------------------------------------
 # ENTRY POINT
-# ----------------------------------------------------------------
 
 def main():
     valid_classes = list(config.KNOT_TYPES.keys())
@@ -631,12 +615,12 @@ def main():
     args   = parser.parse_args()
     runner = PipelineRunner(dry_run=args.dry_run)
 
-    # --- Status ----------------------------------------------------------------
+    # Status 
     if args.status:
         runner.print_status()
         sys.exit(0)
 
-    # -- Validate --classes ----------------------------------------------------------
+    # Validate --classes 
     classes = None
     if args.classes:
         unknown = [c for c in args.classes if c not in valid_classes]
@@ -646,14 +630,14 @@ def main():
             sys.exit(1)
         classes = args.classes
 
-    # -- --steps: multiple named steps ------------------------------------------------
+    # --steps: multiple named steps 
     if args.steps:
         if classes:
             print(f"  Classes: {', '.join(classes)}")
         success = runner.run_steps(args.steps, force=args.force, classes=classes)
         sys.exit(0 if success else 1)
 
-    # -- --step: single step ---------------------------------------------------------
+    # --step: single step 
     if args.step:
         if classes:
             print(f"  Classes: {', '.join(classes)}")
@@ -673,7 +657,7 @@ def main():
                                   classes=classes, extra_args=extra or None)
         sys.exit(0 if success else 1)
 
-    # --- Full pipeline --------------------------------------------------------------------------------
+    # Full pipeline 
     if classes:
         print("[WARN] --classes only works with --step / --steps. Ignored for full run.")
     if args.dry_run:

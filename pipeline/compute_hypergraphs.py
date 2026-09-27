@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 Script 5: Compute Hypergraphs from Persistent Homology Representatives
------------------------------------------------------------------------
 Reads JSON files from Persistent_homology/<class>/representatives/
 and converts PH representatives (cycles) into hypergraph incidence matrices.
 
@@ -41,11 +40,11 @@ def get_selected_classes():
 
 # CONFIG
 
-NUM_WORKERS = 8   # parallel threads for I/O-bound JSON reading
+NUM_WORKERS = 8   # parallel threads 
 
 
 
-# CORE: representatives -- hypergraph
+#  representatives to hypergraph
 
 
 def edges_to_hyperedges(
@@ -94,7 +93,6 @@ def build_incidence_matrix(
     Build sparse incidence matrix (nodes × hyperedges).
 
     Returns:
-        None (matrix no longer saved)
         edge_map   : {hyperedge_id: [node_indices]}
     """
     if not hyperedges or not all_nodes:
@@ -112,7 +110,7 @@ def build_incidence_matrix(
 
     n_nodes = len(all_nodes)
     n_edges = len(hyperedges)
-    # Build hyperedge_id -> list of actual node indices (no matrix needed)
+    # Build hyperedge_id -> list of actual node indices
     edge_map: Dict[int, List[int]] = {}
     for j, hid in enumerate(hyperedge_ids):
         edge_map[hid] = sorted(hyperedges[j])
@@ -135,7 +133,7 @@ def process_protein(
     """
     protein_id = json_path.stem
 
-    # --- Skip if already done ---------------------------------------------------------
+    # Skip if already done 
     if (dirs["hyperedge_map"] / f"{protein_id}.json").exists() and        (dirs["summary"]       / f"{protein_id}.json").exists():
         return {"protein_id": protein_id, "status": "skipped",
                 "n_nodes": 0, "n_hyperedges": 0}
@@ -160,11 +158,11 @@ def process_protein(
         )
         _, edge_map = build_incidence_matrix(hyperedges, all_nodes, hyperedge_ids)
 
-        # --- hyperedge_map/<protein_id>.json ---------------------------------
+        # hyperedge_map/<protein_id>.json 
         with open(dirs["hyperedge_map"] / f"{protein_id}.json", "w") as f:
             json.dump({str(k): v for k, v in edge_map.items()}, f, indent=2)
 
-        # --- summary/<protein_id>.json ---------------------------------------
+        # summary/<protein_id>.json 
         summary = {
             "protein_id":   protein_id,
             "class":        class_name,

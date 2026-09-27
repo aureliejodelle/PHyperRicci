@@ -14,13 +14,13 @@ Directories handled
 -----------------------
   raw_data:
     phd/Database/raw_data/coordinates_data/<class>/
-    phd/Database/raw_data/coordinates_data/<class>_PDB_Homologs/   ← source
+    phd/Database/raw_data/coordinates_data/<class>_PDB_Homologs/   -- source
 
   processed_data:
     hypergraphs/<class>/hyperedge_map/<pid>.json
     Persistent_homology/<class>/barcodes/<pid>.json
     Persistent_homology/<class>/PH_1/<pid>.json
-    Persistent_homology/<class>/representatives/<pid>.json   (if present)
+    Persistent_homology/<class>/representatives/<pid>.json  
     ricci_curvature/<class>/<pid>.json
 
 Usage
@@ -41,24 +41,21 @@ import traceback
 from pathlib import Path
 from datetime import datetime
 
-# --- Topoly import -----------------------------------------------------------------------------
+# Topoly import 
 try:
-    import topoly          # noqa: F401  - just check it is installed
+    import topoly          
     TOPOLY_OK = True
 except ImportError:
     TOPOLY_OK = False
     print("WARNING: topoly not installed. Run:  pip install topoly")
 
-# --- Project layout ------------------------------------------------------
+# Project layout 
 
-# Knot types treated as unknotted per supervisor definition
 UNKNOTTED_TYPES = {"0_1", "2_1", "2_1s"}
 _HERE        = Path(__file__).resolve().parent
 _DEFAULT_BASE = _HERE / "../../Database"
 
-# --- Class folders that have PDB_Homologs to classify --------------------
-# Keys   = folder names on disk (same in raw_data and processed_data)
-# Values = human-readable label used in log messages
+
 ALL_CLASSES = {
     "K41":     "K4(1)",
     "S41":     "S4(1)",
@@ -66,9 +63,8 @@ ALL_CLASSES = {
     "Splus31": "S+3(1)",
 }
 
-# --- Processed-data subtrees and their sub-folders ---------------------------
+
 # Each value is a list of sub-folder names inside processed_data/<tree>/<class>/
-# An empty list means files sit directly in the class folder.
 PROC_SUBTREES: dict[str, list[str]] = {
     "hypergraphs":        ["hyperedge_map"],
     "Persistent_homology": ["barcodes", "PH_1", "representatives"],
@@ -76,9 +72,7 @@ PROC_SUBTREES: dict[str, list[str]] = {
 }
 
 
-# ----------------------------------------------------------------------------
 # Knot detection
-# ------------------------------------------------------------------------------
 
 def is_knotted(pdb_path: Path) -> str | None:
     """
@@ -87,10 +81,6 @@ def is_knotted(pdb_path: Path) -> str | None:
     Returns True  if knotted,
             False if unknotted,
             None  if Topoly raises an exception (protein is logged as error).
-
-    --- How Topoly returns results --------------------------------------
-    The invariant functions (alexander, jones, etc.) have two return modes
-    depending on the `closure` parameter:
 
       Deterministic closure (CLOSED=0, MASS_CENTER=1, DIRECTION=5):
        -- returns a single topology string, e.g. "3_1" or "0_1"
@@ -107,69 +97,60 @@ def is_knotted(pdb_path: Path) -> str | None:
     topology with the highest probability (the mode) and classify
     based on that.
 
-    --- Unknotted types (supervisor definition) -------------------------
-        0_1   — trivial knot
-        2_1   — Hopf link (can appear with probabilistic closure)
-        2_1s  — slipknot variant sometimes returned by Topoly
+
+        0_1   - trivial knot
+        2_1   - Hopf link (can appear with probabilistic closure)
+        2_1s  - slipknot variant sometimes returned by Topoly
 
     Any other type (3_1, 4_1, 3_1s, 4_1s, etc.) is KNOTTED.
 
-    Note: 'hide_trivial=True' (Topoly default) suppresses 0_1 from the
-    dict when other topologies are present. We pass hide_trivial=False
-    so we always see the full distribution, making the dominant type
-    unambiguous.
     """
     if not TOPOLY_OK:
         raise RuntimeError("topoly is not installed")
 
-    # Knot types that count as unknotted (supervisor-defined)
+    # Knot types that count as unknotted
     UNKNOTTED_TYPES = {"0_1", "2_1", "2_1s"}
 
     try:
         from topoly import alexander
 
-        # --- Read coordinates into a Python list of lists ------------------
-        # Topoly accepts coordinates directly as [[x,y,z], ...] which
-        # avoids any file I/O issues (no temp files, no header problems).
+        # Read coordinates into a Python list of lists 
         with open(pdb_path) as _f:
             raw_lines = _f.readlines()
 
-        # Auto-detect delimiter: use comma if present, otherwise whitespace
         sample = next((l for l in raw_lines if l.strip()), "")
-        delimiter = "," if "," in sample else None   # None -- split() on whitespace
+        delimiter = "," if "," in sample else None   #
 
         coords = []
         for line in raw_lines:
             parts = line.strip().split(delimiter)
-            # Strip quotes and whitespace from each token (common in CSVs)
+            # Strip quotes and whitespace
             parts = [p.strip().strip('"').strip("'") for p in parts]
             if len(parts) < 3:
                 continue
             try:
                 coords.append([float(parts[0]), float(parts[1]), float(parts[2])])
             except ValueError:
-                # Skip header rows like "x,y,z" or comment lines
+                # Skip header rows
                 continue
 
         if not coords:
             print(f" No valid coordinate rows in {pdb_path.name}")
             return None
 
-        # --- Run Alexander polynomial ---------------------
         # Stochastic TWO_POINTS closure, tries=200.
-        # hide_trivial=False so 0_1 always appears in the probability dict.
         result = alexander(
             coords,
-            closure=2,          # Closure.TWO_POINTS (stochastic, recommended for proteins)
+            closure=2,         
             tries=200,
             hide_trivial=False, # keep 0_1 visible in the probability dict
             translate=True,     # return topology name strings, not raw polynomial
         )
 
-        # --- Stochastic closure -- dict {topology: probability} --------------------
+        # Stochastic closure 
         if isinstance(result, dict):
             if not result:
-                print(f"        ⚠  Empty result for {pdb_path.name}")
+                print(f"          Empty result for {pdb_path.name}")
                 return None
             # Pick the topology with the highest probability
             dominant = max(result, key=result.get)
@@ -177,7 +158,6 @@ def is_knotted(pdb_path: Path) -> str | None:
             print(f"topology: {result}  -- dominant: {dominant} ({prob:.1%})")
             return dominant
 
-        # --- Deterministic closure -- single string ---------------------------
         if isinstance(result, str):
             print(f"topology: {result}")
             return result
@@ -190,9 +170,7 @@ def is_knotted(pdb_path: Path) -> str | None:
         return None
 
 
-# ------------------------------------------------------------------------------
 # File helpers
-# ---------------------------------------------------------------------------------
 
 def copy_file(src: Path, dst_dir: Path, dry_run: bool) -> bool:
     """Copy src to dst_dir/src.name. Returns True if file existed."""
@@ -229,10 +207,7 @@ def copy_proc_files(pid: str, src_class: str, dst_class: str,
         counts[tree] = n
     return counts
 
-
-# --------------------------------------------------------------------------------
 # Per-class processing
-# ---------------------------------------------------------------------------------------------
 
 def process_class(class_folder: str, base: Path, dry_run: bool) -> dict:
     """
@@ -268,7 +243,7 @@ def process_class(class_folder: str, base: Path, dry_run: bool) -> dict:
     )
 
     if not coord_files:
-        print(f"  ⚠  No .pdb/.xyz/.csv files found in {src_dir}")
+        print(f"    No .pdb/.xyz/.csv files found in {src_dir}")
         return summary
 
     print(f"\n  CLASS: {class_folder}  ({len(coord_files)} PDB_Homologs proteins)")
@@ -279,7 +254,7 @@ def process_class(class_folder: str, base: Path, dry_run: bool) -> dict:
     for pdb_path in coord_files:
         pid = pdb_path.stem    # protein ID without extension
 
-        # --- Run Topoly -----------------------------------------------------
+        # Run Topoly 
         topology = is_knotted(pdb_path)
 
         if topology is None:
@@ -291,16 +266,16 @@ def process_class(class_folder: str, base: Path, dry_run: bool) -> dict:
         label = "unknotted" if is_unknotted else f"KNOTTED ({topology})"
         print(f"[{label}] {pid}")
 
-        # --- Determine destination -----------------------------------------------------------
+        # Determine destination 
         dst_class  = (f"{class_folder}_Unknotted_Homologs"
                       if is_unknotted else
                       f"{class_folder}_KnotProt_Homologs")
         dst_coord  = unknot_dir if is_unknotted else knotted_dir
 
-        # --- Copy coordinate file -----------------------------------------------------------
+        # Copy coordinate file 
         copy_file(pdb_path, dst_coord, dry_run)
 
-        # --- Copy processed-data files ------------------------------------------
+        # Copy processed-data files 
         proc_counts = copy_proc_files(
             pid        = pid,
             src_class  = f"{class_folder}_PDB_Homologs",
@@ -318,7 +293,7 @@ def process_class(class_folder: str, base: Path, dry_run: bool) -> dict:
             action = "would copy" if dry_run else "copied"
             print(f"processed: {action} {total_proc} files  [{detail}]")
 
-        # --- Track -----------------------------------------------------------------------
+        # Track 
         # topology_map: flat {pid: {"topology": ..., "class": ...}} for JSON output
         summary["topology_map"][pid] = {
             "topology": topology,
@@ -332,9 +307,7 @@ def process_class(class_folder: str, base: Path, dry_run: bool) -> dict:
     return summary
 
 
-# --------------------------------------------------------------------------------
 # Main
-# --------------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(
@@ -381,14 +354,14 @@ def main():
     print(f"Classes  : {', '.join(args.classes)}")
     print(f"Dry-run  : {args.dry_run}")
 
-    # --- Validate base path -------------------------------------------------------
+    # Validate base path 
     coord_root = args.base / "raw_data" / "coordinates_data"
     proc_root  = args.base / "processed_data"
     if not coord_root.exists():
         print(f"\nERROR: coordinates_data folder not found:\n  {coord_root}")
         sys.exit(1)
 
-    # --- Process each class ------------------------------------------------------------
+    # Process each class 
     all_summaries = []
     for cls in args.classes:
         try:
@@ -398,7 +371,7 @@ def main():
             print(f"\n  UNEXPECTED ERROR processing {cls}:")
             traceback.print_exc()
 
-    # --- Print summary ---------------------------------------------------------------
+    # Print summary 
     print(f"\n{'=' * 70}")
     print("SUMMARY")
     print(f"{'=' * 70}")
@@ -421,7 +394,7 @@ def main():
 
     print(f"\nDone. {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-    # --- Save JSON outputs ------------------------------------------------------
+    # Save JSON outputs 
     if not args.dry_run:
         # 1. Flat topology map:  {pid: {"topology": "...", "class": "..."}}
         flat_map: dict = {}
