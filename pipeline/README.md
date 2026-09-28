@@ -94,7 +94,7 @@ cd phd/AllScripts/computation_codes
 # Check current state of the pipeline
 python run_pipeline.py --status
 
-# Run the full pipeline (steps 1a → 6)
+# Run the full pipeline (steps 1a to 6)
 python run_pipeline.py
 
 # Run the full pipeline, disabling parallel execution of steps 1b and 2
