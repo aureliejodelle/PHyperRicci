@@ -1,6 +1,4 @@
 """
-curvature_viz.py
-
 Forman-Ricci curvature and H1 median persistence: knotted vs unknotted proteins
 across chain lengths.
 
@@ -24,10 +22,10 @@ Usage
 
 DataFrame columns
 -----------------
-    "Curvature"   float  – Forman-Ricci curvature per protein
-    "Persistence" float  – H1 median persistence per protein
-    "Type"        str    – "knotted" and "unknotted"
-    "Length"      int    – chain length (100, 150, ..., 500)
+    "Curvature"   float  - Forman-Ricci curvature per protein
+    "Persistence" float  - H1 median persistence per protein
+    "Type"        str    - "knotted" and "unknotted"
+    "Length"      int    - chain length (100, 150, ..., 500)
 """
 
 from __future__ import annotations
@@ -178,8 +176,7 @@ def plot_trend_line_median(
     ci: float          = 95.0,
     out_path=None,
 ) -> None:
-    """Line plot - per-loop MEDIAN curvature vs chain length (median across loops;
-    this is the paper's Figure 5 quantity: 'median of the per-loop medians')."""
+    """Line plot: per-loop MEDIAN curvature vs chain length """
     lengths = _lengths(df, lengths, length_col)
     S = _compute_stats(df, lengths, curvature_col, type_col,
                        length_col, np.median, n_boot, ci)
@@ -215,16 +212,7 @@ def _trend_boxplot(
     ylabel, title, out_path,
     box_width=16.0, dodge=11.0, connect_medians=True,
 ):
-    """
-    Shared engine for the grouped-boxplot trend figures.
 
-    For every chain length, two boxplots (knotted / unknotted) are drawn side by
-    side, so the full distribution of the per-loop values at each length is
-    visible: median, inter-quartile range, whiskers and outliers. This is the
-    reviewer-requested replacement for the line-plus-error-bar figure, whose
-    error bars (±1 SD) were ambiguous. A boxplot is the standard way to compare
-    the two populations without hiding the shape of the data.
-    """
     sign = {"knotted": -1.0, "unknotted": +1.0}
 
     fig, ax = plt.subplots(figsize=(9.5, 5.5))
@@ -289,8 +277,7 @@ def plot_trend_boxplot_mean(
     out_path=None,
     **kwargs,
 ) -> None:
-    """Grouped boxplot - per-loop MEAN curvature vs chain length. Boxplot
-    replacement for the mean error-bar figure; knotted vs unknotted per L."""
+    """Grouped boxplot - per-loop MEAN curvature vs chain length."""
     lengths = _lengths(df, lengths, length_col)
     _trend_boxplot(df, lengths, curvature_col, type_col, length_col,
                    ylabel="Mean Curvature",
@@ -307,9 +294,7 @@ def plot_trend_boxplot_median(
     out_path=None,
     **kwargs,
 ) -> None:
-    """Grouped boxplot - per-loop MEDIAN curvature vs chain length. Boxplot
-    replacement for the median error-bar figure (paper's Figure 5 quantity);
-    knotted vs unknotted side by side per L."""
+    """Grouped boxplot - per-loop MEDIAN curvature vs chain length."""
     lengths = _lengths(df, lengths, length_col)
     _trend_boxplot(df, lengths, curvature_col, type_col, length_col,
                    ylabel="Median Curvature",
@@ -326,8 +311,7 @@ def plot_trend_boxplot_median_persistence(
     out_path=None,
     **kwargs,
 ) -> None:
-    """Grouped boxplot - H1 persistence vs chain length (boxplot replacement for
-    the persistence error-bar trend figure). Knotted vs unknotted per L."""
+    """Grouped boxplot - H1 persistence vs chain length."""
     lengths = _lengths(df, lengths, length_col)
     _trend_boxplot(df, lengths, persistence_col, type_col, length_col,
                    ylabel="H1 Persistence",
@@ -339,8 +323,7 @@ def plot_trend_boxplot_median_persistence(
 
 
 def _ks_stars(p):
-    """Significance stars matching the Figure 6 caption
-    (ns p>=0.05, * p<0.05, ** p<0.01, *** p<0.001)."""
+   
     if p < 0.001: return "***"
     if p < 0.01:  return "**"
     if p < 0.05:  return "*"
@@ -357,15 +340,11 @@ def plot_ks_by_length(
     out_path=None,
 ) -> None:
     """
-    Figure 6: two-sample Kolmogorov-Smirnov D-statistic between the knotted and
+    Two-sample Kolmogorov-Smirnov D-statistic between the knotted and
     unknotted per-loop curvature distributions at each chain length.
 
     p-values are Benjamini-Hochberg FDR-corrected across all chain lengths
-    simultaneously (as stated in the paper). Bars are green where the corrected
-    p-value < alpha, grey otherwise, with ns / * / ** / *** annotations.
 
-    Uses the per-loop MEDIAN curvature by default so it is consistent with the
-    median-based Figure 5.
     """
     from scipy.stats import ks_2samp
     try:
@@ -438,8 +417,8 @@ def plot_ks_by_length(
     ax.spines["right"].set_visible(False)
 
     from matplotlib.patches import Patch
-    # mathtext for the comparison operators: Computer Modern's *text* font renders
-    # "<" as "¡" and has no "≥" glyph, so render them in math mode instead.
+    # Computer Modern's 
+    
     handles = [Patch(facecolor=green, label=rf"$p < {alpha:g}$"),
                Patch(facecolor=grey,  label=rf"$p \geq {alpha:g}$")]
     ax.legend(handles=handles, fontsize=FS_LEG, framealpha=0.85, loc="upper left")
@@ -458,22 +437,7 @@ def plot_ks_permutation_by_length(
     seed: int          = 0,
     out_path=None,
 ) -> None:
-    """
-    Figure 6 (permutation variant, ties-safe).
 
-    Bar height is still the two-sample Kolmogorov-Smirnov D-statistic between the
-    knotted and unknotted per-loop curvature distributions at each chain length,
-    so it is directly comparable to the standard KS panel. The p-value, however,
-    is obtained by a LABEL-PERMUTATION test (shuffle the knotted/unknotted labels
-    `n_perm` times and count how often the permuted D >= observed D), then
-    BH-FDR-corrected across chain lengths.
-
-    This is the appropriate significance test when the statistic is the per-loop
-    MEDIAN curvature: the median lands on a small set of integer/half-integer
-    values (heavy ties), which violates the continuous-distribution assumption of
-    the asymptotic KS p-value. The permutation null makes no such assumption and
-    is exact up to Monte-Carlo error, so it stays valid under ties.
-    """
     from scipy.stats import ks_2samp
     try:
         from statsmodels.stats.multitest import multipletests
@@ -970,11 +934,6 @@ def _mean_curvature(M):
 
 def _median_curvature(M):
     """Per-loop MEDIAN hyperedge curvature.
-
-    This matches the protein pipeline, whose per-protein descriptor is the
-    median hyperedge curvature (Curv_median in extract_features.py), and the
-    Figure 5 caption ("median of the per-loop medians"). Both statistics are
-    kept so the mean- and median-based figures can be produced side by side.
     """
     c = _hyperedge_curvatures(M)
     return float(np.median(c)) if len(c) else float("nan")
@@ -993,10 +952,6 @@ def load_real_data(outputs_dir="outputs",
         Curvature_median  per-loop MEDIAN hyperedge curvature (matches proteins)
         Curvature         alias of Curvature_mean (backward compatibility)
         Persistence       per-loop median H1 persistence
-        Type, Length
-
-    Both the mean and the median are stored so the mean- and median-based
-    figures can be plotted side by side.
     """
     rows = []
     for L in lengths:
