@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Script 2: Extract Knot Core Data
 
