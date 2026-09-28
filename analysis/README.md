@@ -2,9 +2,9 @@
 
 Statistical analysis scripts for distributional tests across knot classes.
 
-## Planned contents
+## Contents
 
-- Kruskal-Wallis and Mann-Whitney U tests on topological features
+- Kruskal-Wallis, Levene, and Mann-Whitney U tests on topological features
 - Effect size (Cliff's delta) pairwise comparisons between classes
 - Persistent homology barcode statistics (mean/median/max persistence, H1 count)
 - Forman-Ricci curvature distribution tests
